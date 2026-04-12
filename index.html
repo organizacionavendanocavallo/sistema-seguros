@@ -421,6 +421,7 @@ td.nm{color:var(--txt);font-weight:600}
         <div><label>Compañía aseguradora</label><input id="pComp" type="text" placeholder="Ej: Galicia Seguros"></div>
         <div><label>Suma asegurada ($)</label><input id="pSuma" type="number" placeholder="0"></div>
         <div><label>Prima ($)</label><input id="pPrima" type="number" placeholder="0"></div>
+        <div><label>Premio ($)</label><input id="pPremio" type="number" placeholder="0"></div>
         <div><label>Frecuencia de pago</label>
           <select id="pFrec"><option>Mensual</option><option>Trimestral</option><option>Semestral</option><option>Anual</option></select>
         </div>
@@ -442,7 +443,7 @@ td.nm{color:var(--txt);font-weight:600}
 <script type="module">
 import { initializeApp }           from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const FB = {
   apiKey:"AIzaSyCYwmG-KhLw7aAAceA4xYY1qhDIG08Rd9o",
@@ -693,7 +694,12 @@ window.verFicha=id=>{
       h+=`<div class="ficha-pol">
         <div>
           <div class="ficha-pol-nom">Póliza ${p.nroPoliza||'-'} ${badge}</div>
-          <div class="ficha-pol-det">${p.tipo||'-'} — ${p.compania||'-'} ${p.prima?'• Prima: $'+Number(p.prima).toLocaleString('es-AR'):''}</div>
+          <div class="ficha-pol-det">${p.tipo||'-'} — ${p.compania||'-'}</div>
+          <div class="ficha-pol-det" style="display:flex;gap:14px;margin-top:4px">
+            ${p.prima?'<span><strong>Prima:</strong> $'+Number(p.prima).toLocaleString('es-AR')+'</span>':''}
+            ${p.premio?'<span><strong>Premio:</strong> $'+Number(p.premio).toLocaleString('es-AR')+'</span>':''}
+            ${p.sumaAse?'<span><strong>Suma aseg.:</strong> $'+Number(p.sumaAse).toLocaleString('es-AR')+'</span>':''}
+          </div>
           <div class="ficha-pol-det">Vencimiento: ${p.fVto||'-'} ${p.frecuencia?'• '+p.frecuencia:''}</div>
           ${p.observ?`<div class="ficha-pol-det" style="font-style:italic">${p.observ}</div>`:''}
         </div>
@@ -729,10 +735,15 @@ window.guardarCli=async()=>{
   const id=gv('cId');
   const d={nombre:nom,documento:gv('cDoc'),cuit:gv('cCuit'),fNac:gv('cFN'),email:gv('cEmail'),calle:gv('cCalle'),nro:gv('cNro'),piso:gv('cPiso'),dpto:gv('cDpto'),localidad:gv('cLoc'),cp:gv('cCp'),tel1:gv('cT1'),tel2:gv('cT2'),tel3:gv('cT3'),cbu:gv('cCbu'),tarj1:gv('cTj1'),vtoT1:gv('cVt1'),tarj2:gv('cTj2'),vtoT2:gv('cVt2'),actualizado:new Date().toLocaleDateString('es-AR')};
   try{
-    if(id){await updateDoc(doc(db,'clientes',id),d);}
-    else{d.creado=new Date().toLocaleDateString('es-AR');await addDoc(collection(db,'clientes'),d);}
-    toast('Cliente guardado','vd'); cerrar('mo-cli'); cargarDatos();
-  }catch(e){toast('Error: '+e.message,'ro');}
+    if(id){
+      const ref=doc(db,'clientes',id);
+      await updateDoc(ref,d);
+    } else {
+      d.creado=new Date().toLocaleDateString('es-AR');
+      await addDoc(collection(db,'clientes'),d);
+    }
+    toast('Cliente guardado','vd'); cerrar('mo-cli'); await cargarDatos();
+  }catch(e){console.error(e);toast('Error al guardar: '+e.message,'ro');}
 };
 
 window.elimCli=async(id,nom)=>{
@@ -796,9 +807,10 @@ function renPol(){
       return `<tr>
         <td class="nm">${p.nroPoliza||'-'}</td>
         <td>${nCli(p.idCliente)}</td>
-        <td>${p.tipo||'-'}</td>
         <td>${p.compania||'-'}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.observ||'-'}</td>
         <td>${p.prima?'$'+Number(p.prima).toLocaleString('es-AR'):'-'}</td>
+        <td>${p.premio?'$'+Number(p.premio).toLocaleString('es-AR'):'-'}</td>
         <td><span style="${ev}">${p.fVto||'-'}</span></td>
         <td><span class="badge ${p.estado==='Vigente'?'badge-vd':p.estado==='Cancelada'?'badge-gr':'badge-ro'}">${p.estado||'-'}</span></td>
         <td><div style="display:flex;gap:4px">
@@ -809,7 +821,7 @@ function renPol(){
       </tr>`;
     }).join('');
     ct.innerHTML=`<div class="tw"><table>
-      <thead><tr><th>Nro.</th><th>Cliente</th><th>Tipo</th><th>Compañía</th><th>Prima</th><th>Vencimiento</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <thead><tr><th>Nro.</th><th>Cliente</th><th>Compañía</th><th>Objeto</th><th>Prima</th><th>Premio</th><th>Vencimiento</th><th>Estado</th><th>Acciones</th></tr></thead>
       <tbody>${rows||'<tr class="empty"><td colspan="8">Sin resultados.</td></tr>'}</tbody>
     </table></div>`+paginacion(pP,tp,'pP','renPol')+`<div style="padding:8px 20px 12px;font-size:12px;color:var(--txt3)">Mostrando ${ini+1}–${Math.min(ini+PP,PF.length)} de ${PF.length}</div>`;
   }
@@ -823,7 +835,7 @@ window.abrirPol=id=>{
   if(id){
     const p=P.find(x=>x.id===id); if(!p)return;
     document.getElementById('mo-pol-titulo').textContent='Editar póliza';
-    const m={pId:p.id,pNro:p.nroPoliza,pComp:p.compania,pSuma:p.sumaAse,pPrima:p.prima,pFIni:p.fInicio,pFVto:p.fVto,pObs:p.observ};
+    const m={pId:p.id,pNro:p.nroPoliza,pComp:p.compania,pSuma:p.sumaAse,pPrima:p.prima,pPremio:p.premio,pFIni:p.fInicio,pFVto:p.fVto,pObs:p.observ};
     Object.entries(m).forEach(([k,v])=>sg(k,v));
     sel.value=p.idCliente;
     sg('pTipo',p.tipo); sg('pFrec',p.frecuencia); sg('pEst',p.estado);
@@ -845,7 +857,7 @@ window.guardarPol=async()=>{
   const nro=gv('pNro'),idc=document.getElementById('pCli').value;
   if(!nro){toast('El número de póliza es obligatorio','ro');return;}
   const id=gv('pId');
-  const d={idCliente:idc,nroPoliza:nro,tipo:document.getElementById('pTipo').value,compania:gv('pComp'),sumaAse:gv('pSuma'),prima:gv('pPrima'),frecuencia:document.getElementById('pFrec').value,fInicio:gv('pFIni'),fVto:gv('pFVto'),estado:document.getElementById('pEst').value,observ:gv('pObs'),actualizado:new Date().toLocaleDateString('es-AR')};
+  const d={idCliente:idc,nroPoliza:nro,tipo:document.getElementById('pTipo').value,compania:gv('pComp'),sumaAse:gv('pSuma'),prima:gv('pPrima'),premio:gv('pPremio'),frecuencia:document.getElementById('pFrec').value,fInicio:gv('pFIni'),fVto:gv('pFVto'),estado:document.getElementById('pEst').value,observ:gv('pObs'),actualizado:new Date().toLocaleDateString('es-AR')};
   try{
     if(id){await updateDoc(doc(db,'polizas',id),d);}
     else{d.creado=new Date().toLocaleDateString('es-AR');await addDoc(collection(db,'polizas'),d);}
@@ -912,141 +924,143 @@ let _tt;
 function toast(m,tp){const t=document.getElementById('toast');t.textContent=m;t.className='toast '+(tp||'ok');t.style.display='block';clearTimeout(_tt);_tt=setTimeout(()=>t.style.display='none',3000);}
 window.toast=toast;
 
-// ── IMPORTAR EXCEL ────────────────────────────────────────────
+// ── IMPORTAR EXCEL (batch writes - rápido) ───────────────────
 let importData = null;
+
+const lim = v => (v===null||v===undefined||String(v).trim()==='NaN'||String(v).trim()==='NaT')?'':String(v).trim();
+const fmtF = v => {
+  if(!v||lim(v)==='') return '';
+  try {
+    const d = new Date(v);
+    if(!isNaN(d) && d.getFullYear()>1900) return d.toLocaleDateString('es-AR');
+  } catch(e){}
+  return lim(v);
+};
 
 window.previewImport = async (input) => {
   const file = input.files[0];
-  if (!file) return;
-  const zone = document.getElementById('upload-zone');
-  zone.innerHTML = '<div style="font-size:28px">📄</div><p><strong>' + file.name + '</strong></p>';
-  
+  if(!file) return;
+  document.getElementById('upload-zone').innerHTML = '<div style="font-size:28px">📄</div><p><strong>'+file.name+'</strong></p>';
   const data = await file.arrayBuffer();
   const wb = XLSX.read(data);
-  
-  // Leer asegurados
-  const wsA = wb.Sheets[wb.SheetNames[0]];
-  const aseg = XLSX.utils.sheet_to_json(wsA);
-  
-  // Leer polizas
-  const wsP = wb.Sheets[wb.SheetNames[1]];
-  const pols = XLSX.utils.sheet_to_json(wsP);
-  
-  importData = { aseg, pols };
-  
-  document.getElementById('import-info').innerHTML = 
+  const aseg = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+  const pols = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[1]]);
+  importData = {aseg, pols};
+  document.getElementById('import-info').innerHTML =
     '<strong>✅ Archivo leído correctamente</strong><br>' +
-    '📋 Asegurados encontrados: <strong>' + aseg.length + '</strong><br>' +
-    '📄 Pólizas encontradas: <strong>' + pols.length + '</strong>';
-  document.getElementById('import-preview').style.display = 'block';
-  document.getElementById('btn-import').style.display = 'inline-flex';
+    '👤 Asegurados: <strong>'+aseg.length+'</strong> &nbsp;|&nbsp; 📄 Pólizas: <strong>'+pols.length+'</strong>';
+  document.getElementById('import-preview').style.display='block';
+  document.getElementById('btn-import').style.display='inline-flex';
 };
 
 window.ejecutarImport = async () => {
-  if (!importData) return;
-  const { aseg, pols } = importData;
-  
-  document.getElementById('import-progress').style.display = 'block';
-  document.getElementById('btn-import').style.display = 'none';
-  
-  const total = aseg.length + pols.length;
-  let done = 0;
-  
-  const updBar = (msg) => {
-    done++;
-    const pct = Math.round((done/total)*100);
-    document.getElementById('import-bar').style.width = pct + '%';
-    document.getElementById('import-status').textContent = msg + ' (' + pct + '%)';
+  if(!importData) return;
+  const {aseg, pols} = importData;
+  document.getElementById('import-progress').style.display='block';
+  document.getElementById('btn-import').style.display='none';
+
+  const setBar = (pct, msg) => {
+    document.getElementById('import-bar').style.width=pct+'%';
+    document.getElementById('import-status').textContent=msg;
   };
-  
-  // Mapa codigo → docId Firebase
+
+  const BATCH_SIZE = 499;
   const codigoAId = {};
-  
-  // Importar asegurados
-  for (const a of aseg) {
-    const cod = String(a['CODIGO DE ASEGURADO'] || '').trim();
-    if (!cod) { done++; continue; }
-    
-    const lim = v => v === null || v === undefined || String(v) === 'NaN' ? '' : String(v).trim();
-    const fmtFecha = v => {
-      if (!v) return '';
-      const s = String(v);
-      if (s.includes('T') || s.includes('-')) {
-        const d = new Date(v);
-        if (!isNaN(d)) return d.toLocaleDateString('es-AR');
+  let totalDone = 0;
+  const totalOps = aseg.length + pols.length;
+
+  // ── Importar asegurados en lotes ──
+  setBar(0, 'Preparando asegurados...');
+  const aSegDocs = [];
+  for(const a of aseg){
+    const cod = lim(a['CODIGO DE ASEGURADO']);
+    if(!cod) continue;
+    aSegDocs.push({
+      cod,
+      data: {
+        codigoAsegurado: cod,
+        nombre: (lim(a['APELLIDO'])+' '+lim(a['NOM'])).trim(),
+        documento: lim(a['DOCUMENTO']),
+        cuit: lim(a['NRO_CUIT']),
+        fNac: fmtF(a['FECHA DE NACIMIENTO']),
+        email: lim(a['EMAIL']),
+        calle: lim(a['CALLE']),
+        nro: lim(a['NUMERO']),
+        piso: lim(a['PISO']),
+        dpto: lim(a['DEPTO']),
+        localidad: lim(a['LOCALIDAD']),
+        cp: lim(a['COD_POST']),
+        tel1: lim(a['TELEFONO1']),
+        tel2: lim(a['CELULAR']),
+        tel3: lim(a['TEL_COBR']),
+        cbu: lim(a['CBU']),
+        tarj1: lim(a['TARJETA']),
+        vtoT1: fmtF(a['VENCIMIENTO']),
+        creado: new Date().toLocaleDateString('es-AR')
       }
-      return s;
-    };
-    
-    const data = {
-      codigoAsegurado: cod,
-      nombre: (lim(a['APELLIDO']) + ' ' + lim(a['NOM'])).trim(),
-      documento: lim(a['DOCUMENTO']),
-      cuit: lim(a['NRO_CUIT']),
-      fNac: fmtFecha(a['FECHA_NAC']),
-      email: lim(a['EMAIL']),
-      calle: lim(a['CALLE']),
-      nro: lim(a['NUMERO']),
-      piso: lim(a['PISO']),
-      dpto: lim(a['DEPTO']),
-      localidad: lim(a['LOCALIDAD']),
-      cp: lim(a['COD_POST']),
-      tel1: lim(a['TELEFONO1']),
-      tel2: lim(a['CELULAR']),
-      tel3: lim(a['TEL_COBR'] || ''),
-      cbu: lim(a['CBU']),
-      tarj1: lim(a['TARJETA']),
-      vtoT1: lim(a['VENCIMIENTO']),
-      creado: new Date().toLocaleDateString('es-AR')
-    };
-    
-    try {
-      const ref = await addDoc(collection(db, 'clientes'), data);
-      codigoAId[cod] = ref.id;
-    } catch(e) { console.error('Error asegurado', cod, e.message); }
-    
-    updBar('Importando asegurado ' + cod);
+    });
   }
-  
-  // Importar polizas
-  for (const p of pols) {
-    const cod = String(p['CODIGO DE ASEGURADO'] || '').trim();
+
+  // Procesar asegurados en lotes de 499
+  for(let i=0; i<aSegDocs.length; i+=BATCH_SIZE){
+    const chunk = aSegDocs.slice(i, i+BATCH_SIZE);
+    const batch = writeBatch(db);
+    const refs = [];
+    chunk.forEach(item => {
+      const ref = doc(collection(db,'clientes'));
+      batch.set(ref, item.data);
+      refs.push({cod:item.cod, ref});
+    });
+    await batch.commit();
+    refs.forEach(r => codigoAId[r.cod] = r.ref.id);
+    totalDone += chunk.length;
+    const pct = Math.round((totalDone/totalOps)*50);
+    setBar(pct, 'Asegurados: '+totalDone+' de '+aSegDocs.length+' importados...');
+  }
+
+  // ── Importar pólizas en lotes ──
+  setBar(50, 'Preparando pólizas...');
+  const polDocs = [];
+  for(const p of pols){
+    const cod = lim(p['CODIGO DE ASEGURADO']);
     const idCli = codigoAId[cod];
-    if (!idCli) { done++; continue; }
-    
-    const lim = v => v === null || v === undefined || String(v) === 'NaN' ? '' : String(v).trim();
-    const fmtFecha = v => {
-      if (!v) return '';
-      const d = new Date(v);
-      return isNaN(d) ? String(v) : d.toLocaleDateString('es-AR');
-    };
-    
-    const anulada = String(p['ANULADA'] || '').toLowerCase();
-    const estado = anulada === 'true' ? 'Cancelada' : 'Vigente';
-    
-    const data = {
+    if(!idCli) continue;
+    const anulada = String(p['ANULADA']||'').toLowerCase()==='true';
+    polDocs.push({
       idCliente: idCli,
       codigoAsegurado: cod,
       nroPoliza: lim(p['NRO_POLIZa']),
-      tipo: 'Automotor',
       compania: lim(p['COMPAÑIA']),
+      observ: lim(p['OBJETO']),
       sumaAse: lim(p['SUMA ASEGURADA']),
       prima: lim(p['PRIMA']),
-      observ: lim(p['OBJETO']),
-      fInicio: fmtFecha(p['FECH_INIC']),
-      fVto: fmtFecha(p['FECH_FIN']),
-      estado: estado,
+      premio: lim(p['PREMIO']),
+      fInicio: fmtF(p['FECHA DE INICIO']),
+      fVto: fmtF(p['FECHA DE VENCIMIENTO']),
+      fAnulacion: fmtF(p['FECHA DE ANULACIÓN']),
+      estado: anulada ? 'Cancelada' : 'Vigente',
+      renovada: String(p['RENOVADA']||'').toLowerCase()==='true',
       creado: new Date().toLocaleDateString('es-AR')
-    };
-    
-    try { await addDoc(collection(db, 'polizas'), data); }
-    catch(e) { console.error('Error poliza', p['NRO_POLIZa'], e.message); }
-    
-    updBar('Importando póliza ' + lim(p['NRO_POLIZa']));
+    });
   }
-  
-  document.getElementById('import-status').textContent = '✅ Importación completada. Recargando datos...';
-  setTimeout(() => { cerrar('mo-import'); cargarDatos(); }, 1500);
+
+  let polDone = 0;
+  for(let i=0; i<polDocs.length; i+=BATCH_SIZE){
+    const chunk = polDocs.slice(i, i+BATCH_SIZE);
+    const batch = writeBatch(db);
+    chunk.forEach(data => {
+      const ref = doc(collection(db,'polizas'));
+      batch.set(ref, data);
+    });
+    await batch.commit();
+    polDone += chunk.length;
+    totalDone += chunk.length;
+    const pct = 50 + Math.round((polDone/polDocs.length)*50);
+    setBar(pct, 'Pólizas: '+polDone+' de '+polDocs.length+' importadas...');
+  }
+
+  setBar(100, '✅ Importación completada — '+aSegDocs.length+' asegurados y '+polDone+' pólizas');
+  setTimeout(()=>{ cerrar('mo-import'); cargarDatos(); }, 2000);
 };
 
 document.querySelectorAll('.ov').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('on');}));
