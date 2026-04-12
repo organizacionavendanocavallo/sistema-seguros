@@ -291,18 +291,33 @@ td.nm{color:var(--txt);font-weight:600}
 
     <!-- DASHBOARD -->
     <div class="tab on" id="tab-dash">
-      <div class="stats-grid">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Vencimientos de pólizas y tarjetas</div>
+      <div class="stats-grid" style="margin-bottom:20px">
         <div class="stat-card"><div class="stat-icon ro">🚨</div><div><div class="stat-n ro" id="s-venc">0</div><div class="stat-l">Pólizas vencidas</div></div></div>
         <div class="stat-card"><div class="stat-icon na">⚠️</div><div><div class="stat-n na" id="s-urg">0</div><div class="stat-l">Vencen en 15 días</div></div></div>
         <div class="stat-card"><div class="stat-icon vd">📋</div><div><div class="stat-n vd" id="s-prox">0</div><div class="stat-l">Vencen en 30 días</div></div></div>
         <div class="stat-card"><div class="stat-icon az">💳</div><div><div class="stat-n az" id="s-tarj">0</div><div class="stat-l">Tarjetas por vencer</div></div></div>
       </div>
-      <div class="panel">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Refacturaciones próximas</div>
+      <div class="stats-grid" style="margin-bottom:20px">
+        <div class="stat-card"><div class="stat-icon ro">🔴</div><div><div class="stat-n ro" id="s-ref-venc">0</div><div class="stat-l">Refact. vencidas</div></div></div>
+        <div class="stat-card"><div class="stat-icon na">🟡</div><div><div class="stat-n na" id="s-ref-hoy">0</div><div class="stat-l">Refact. hoy</div></div></div>
+        <div class="stat-card"><div class="stat-icon az">🔵</div><div><div class="stat-n az" id="s-ref-prox">0</div><div class="stat-l">Refact. en 10 días</div></div></div>
+        <div class="stat-card"><div class="stat-icon vd">✅</div><div><div class="stat-n vd" id="s-ref-total">0</div><div class="stat-l">Total pólizas activas</div></div></div>
+      </div>
+      <div class="panel" style="margin-bottom:16px">
         <div class="panel-hd">
           <h3>Alertas de vencimiento</h3>
           <button class="btn btn-ghost btn-sm" onclick="calcAlertas()">↻ Actualizar</button>
         </div>
         <div style="padding:16px 20px" id="lista-al"><div style="text-align:center;padding:40px;color:var(--txt3)">Cargando alertas...</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-hd">
+          <h3>Alertas de refacturación <span style="font-size:12px;font-weight:400;color:var(--txt3)">— 10 días antes de cada vencimiento de cuota</span></h3>
+          <button class="btn btn-ghost btn-sm" onclick="calcAlertas()">↻ Actualizar</button>
+        </div>
+        <div style="padding:16px 20px" id="lista-ref"><div style="text-align:center;padding:40px;color:var(--txt3)">Cargando...</div></div>
       </div>
     </div>
 
@@ -873,13 +888,52 @@ window.bajarPoliza=async id=>{
   }catch(e){toast('Error: '+e.message,'ro');}
 };
 
-window.renovarPoliza=async id=>{
+window.renovarPoliza=id=>{
   const p=P.find(x=>x.id===id); if(!p)return;
-  const nueva=prompt('Ingresá la nueva fecha de vencimiento (DD/MM/AAAA):');
-  if(!nueva)return;
+  // Calcular fecha por defecto: fVto actual + 1 año
+  let defDate='';
+  const vto=pf(p.fVto);
+  if(vto){ const d=new Date(vto); d.setFullYear(d.getFullYear()+1); defDate=d.toISOString().split('T')[0]; }
+  document.getElementById('rId').value=id;
+  document.getElementById('rFVto').value=defDate;
+  document.getElementById('rNro').value='';
+  document.getElementById('rPrima').value=p.prima||'';
+  document.getElementById('rPremio').value=p.premio||'';
+  document.getElementById('rFrec').value=p.frecuencia||'Anual';
+  document.getElementById('rInfo').innerHTML=
+    '<strong>Póliza actual:</strong> '+(p.nroPoliza||'-')+' &nbsp;|&nbsp; '+
+    '<strong>Vence:</strong> '+(p.fVto||'-')+' &nbsp;|&nbsp; '+
+    '<strong>Cliente:</strong> '+nCli(p.idCliente);
+  abrir('mo-renov');
+};
+
+window.confirmarRenovar=async()=>{
+  const id=gv('rId'), fVto=gv('rFVto'), nro=gv('rNro');
+  if(!fVto||!nro){toast('Fecha y número de póliza son obligatorios','ro');return;}
+  const p=P.find(x=>x.id===id); if(!p)return;
   try{
-    await updateDoc(doc(db,'polizas',id),{fVto:nueva,estado:'Vigente',actualizado:new Date().toLocaleDateString('es-AR')});
-    toast('Póliza renovada hasta '+nueva,'vd'); cargarDatos();
+    // 1. Marcar póliza vieja como Renovada
+    await updateDoc(doc(db,'polizas',id),{estado:'Renovada',actualizado:new Date().toLocaleDateString('es-AR')});
+    // 2. Crear póliza nueva
+    await addDoc(collection(db,'polizas'),{
+      idCliente:p.idCliente,
+      codigoAsegurado:p.codigoAsegurado||'',
+      nroPoliza:nro,
+      compania:p.compania||'',
+      observ:p.observ||'',
+      sumaAse:p.sumaAse||'',
+      prima:gv('rPrima'),
+      premio:gv('rPremio'),
+      frecuencia:gv('rFrec'),
+      fInicio:p.fVto||'',
+      fVto: fVto.split('-').reverse().join('/'),
+      estado:'Vigente',
+      renovadaDe:id,
+      creado:new Date().toLocaleDateString('es-AR')
+    });
+    toast('Póliza renovada correctamente','vd');
+    cerrar('mo-renov');
+    cargarDatos();
   }catch(e){toast('Error: '+e.message,'ro');}
 };
 
@@ -1065,6 +1119,37 @@ window.ejecutarImport = async () => {
 
 document.querySelectorAll('.ov').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('on');}));
 </script>
+
+
+<!-- MODAL RENOVAR POLIZA -->
+<div class="ov" id="mo-renov">
+  <div class="mo" style="max-width:560px">
+    <div class="mo-hd"><h3>Renovar póliza</h3><button class="mo-x" onclick="cerrar('mo-renov')">✕</button></div>
+    <div class="mo-bd">
+      <input type="hidden" id="rId">
+      <div style="background:var(--sky);border:1px solid var(--sky3);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--navy)" id="rInfo"></div>
+      <div class="fg">
+        <div><label>Fecha de vencimiento nueva *</label><input id="rFVto" type="date"></div>
+        <div><label>Nuevo número de póliza *</label><input id="rNro" type="text" placeholder="Ej: 123456-8"></div>
+        <div><label>Nueva prima ($)</label><input id="rPrima" type="number" placeholder="0"></div>
+        <div><label>Nuevo premio ($)</label><input id="rPremio" type="number" placeholder="0"></div>
+        <div class="ff"><label>Frecuencia de refacturación</label>
+          <select id="rFrec">
+            <option value="Anual">Anual</option>
+            <option value="Semestral">Semestral</option>
+            <option value="Cuatrimestral">Cuatrimestral</option>
+            <option value="Trimestral">Trimestral</option>
+            <option value="Mensual">Mensual</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mo-ft">
+      <button class="btn btn-ghost" onclick="cerrar('mo-renov')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarRenovar()">✅ Confirmar renovación</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL IMPORTAR EXCEL -->
 <div class="ov" id="mo-import">
