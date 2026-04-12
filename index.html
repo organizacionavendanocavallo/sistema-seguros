@@ -286,6 +286,10 @@ td.nm{color:var(--txt);font-weight:600}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
       Pólizas <span id="cnt-pol" style="font-size:11px;color:var(--txt3)"></span>
     </button>
+    <button class="ni" id="ni-venc" onclick="ir('venc')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      Pólizas vencidas <span class="ni-badge" id="badge-venc" style="display:none">0</span>
+    </button>
     <button class="ni" id="ni-cfg" onclick="ir('cfg')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
       Configuración
@@ -312,7 +316,13 @@ td.nm{color:var(--txt);font-weight:600}
       <div class="panel" style="margin-bottom:16px">
         <div class="panel-hd">
           <h3>Alertas de vencimiento</h3>
-          <button class="btn btn-ghost btn-sm" onclick="calcAlertas()">↻ Actualizar</button>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label style="font-size:12px;color:var(--txt3)">Mostrar vencidas hasta:</label>
+            <input type="date" id="fil-fecha-al" class="si" style="padding:6px 10px;font-size:13px" onchange="calcAlertas()">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fil-fecha-al').value='';calcAlertas()">✕ Limpiar</button>
+            <button class="btn btn-ghost btn-sm" onclick="calcAlertas()">↻ Actualizar</button>
+            <button class="btn btn-danger btn-sm" onclick="pasarAVencidas()">→ Mover a Vencidas</button>
+          </div>
         </div>
         <div style="padding:16px 20px" id="lista-al"><div style="text-align:center;padding:40px;color:var(--txt3)">Cargando alertas...</div></div>
       </div>
@@ -366,6 +376,23 @@ td.nm{color:var(--txt);font-weight:600}
           </div>
         </div>
         <div id="body-pol"></div>
+      </div>
+    </div>
+
+    <!-- POLIZAS VENCIDAS -->
+    <div class="tab" id="tab-venc">
+      <div class="panel">
+        <div class="panel-hd">
+          <h3>Pólizas vencidas <span id="sub-venc"></span></h3>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label style="font-size:12px;color:var(--txt3)">Vencidas antes de:</label>
+            <input type="date" id="fil-fecha-venc" class="si" style="padding:6px 10px;font-size:13px" onchange="renVenc()">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fil-fecha-venc').value='';renVenc()">✕ Limpiar</button>
+            <input class="si" id="q-venc" type="text" placeholder="Buscar cliente o póliza..." style="width:220px" oninput="renVenc()">
+            <button class="btn btn-ghost btn-sm" onclick="exportarVencExcel()">⬇ Excel</button>
+          </div>
+        </div>
+        <div id="body-venc"><div class="ld"><div class="sp"></div>Cargando...</div></div>
       </div>
     </div>
 
@@ -435,9 +462,9 @@ td.nm{color:var(--txt);font-weight:600}
         <div class="fg-sec">Datos bancarios</div>
         <div class="ff"><label>CBU</label><input id="cCbu" type="text" placeholder="22 dígitos"></div>
         <div><label>Tarjeta 1 (número)</label><input id="cTj1" type="text" placeholder="**** **** **** ****"></div>
-        <div><label>Vencimiento tarjeta 1</label><input id="cVt1" type="text" placeholder="MM/AA"></div>
+        <div><label>Vencimiento tarjeta 1</label><input id="cVt1" type="text" placeholder="MM/AAAA" maxlength="7" oninput="fmtTarj(this)"></div>
         <div><label>Tarjeta 2 (número)</label><input id="cTj2" type="text" placeholder="**** **** **** ****"></div>
-        <div><label>Vencimiento tarjeta 2</label><input id="cVt2" type="text" placeholder="MM/AA"></div>
+        <div><label>Vencimiento tarjeta 2</label><input id="cVt2" type="text" placeholder="MM/AAAA" maxlength="7" oninput="fmtTarj(this)"></div>
       </div>
     </div>
     <div class="mo-ft">
@@ -555,7 +582,7 @@ async function cargarDatos(){
     document.getElementById('cnt-pol').textContent='('+P.length+')';
     document.getElementById('sub-cli').textContent='— '+C.length+' registros';
     document.getElementById('sub-pol').textContent='— '+P.length+' registros';
-    renCli(); renPol(); calcAlertas();
+    renCli(); renPol(); calcAlertas(); renVenc();
   } catch(e){ toast('Error al cargar datos: '+e.message,'ro'); }
 }
 
@@ -632,14 +659,23 @@ window.calcAlertas=()=>{
 };
 
 function pfTarjeta(s){
-  // MM/AA o MM/YYYY
   if(!s) return null;
-  const m=String(s).trim().match(/^(\d{1,2})[\/\-](\d{2,4})$/);
+  const t=String(s).trim();
+  // MM/AAAA o MM/AA
+  const m=t.match(/^(\d{1,2})[\/\-](\d{2,4})$/);
   if(!m) return null;
   const mo=+m[1]-1;
-  const yr=+m[2]<100?2000+m[2]:+m[2];
-  return new Date(yr,mo,1);
+  const yr=+m[2]<100?2000+(+m[2]):+m[2];
+  if(mo<0||mo>11) return null;
+  // Vence el último día del mes
+  return new Date(yr,mo+1,0);
 }
+
+window.fmtTarj=function(input){
+  let v=input.value.replace(/[^0-9]/g,'');
+  if(v.length>2) v=v.substring(0,2)+'/'+v.substring(2,6);
+  input.value=v;
+};
 
 // ── CLIENTES ─────────────────────────────────────────────────
 window.filtrarCli=()=>{
@@ -1011,6 +1047,126 @@ let _tt;
 function toast(m,tp){const t=document.getElementById('toast');t.textContent=m;t.className='toast '+(tp||'ok');t.style.display='block';clearTimeout(_tt);_tt=setTimeout(()=>t.style.display='none',3000);}
 window.toast=toast;
 
+
+// ── PÓLIZAS VENCIDAS ──────────────────────────────────────────
+let pC_venc = 1;
+const PP_venc = 25;
+
+window.renVenc = () => {
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const filFecha = document.getElementById('fil-fecha-venc').value;
+  const q = (document.getElementById('q-venc').value||'').toLowerCase().trim();
+  const corte = filFecha ? new Date(filFecha+'T00:00:00') : hoy;
+
+  let vencidas = P.filter(p => {
+    if(p.estado==='Anulada') return false;
+    const v = pf(p.fVto); if(!v) return false;
+    if(v >= corte) return false; // solo las que vencen ANTES del corte
+    if(q){
+      const nc = String(nCli(p.idCliente)||'').toLowerCase();
+      if(!(p.nroPoliza||'').toLowerCase().includes(q) && !nc.includes(q) && !(p.compania||'').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Sort by fVto desc (más recientes primero)
+  vencidas.sort((a,b)=>{
+    const va=pf(a.fVto), vb=pf(b.fVto);
+    return vb-va;
+  });
+
+  const badge = document.getElementById('badge-venc');
+  const totalVenc = P.filter(p=>{ const v=pf(p.fVto); return v&&v<hoy&&p.estado!=='Anulada'; }).length;
+  if(totalVenc>0){badge.textContent=totalVenc;badge.style.display='inline';}else badge.style.display='none';
+
+  document.getElementById('sub-venc').textContent = '— '+vencidas.length+(filFecha?' hasta '+new Date(filFecha+'T00:00:00').toLocaleDateString('es-AR'):'');
+
+  const ct = document.getElementById('body-venc');
+  if(!vencidas.length){ct.innerHTML='<div class="empty">Sin pólizas vencidas para el filtro seleccionado.</div>';return;}
+
+  const ini=(pC_venc-1)*PP_venc, pg=vencidas.slice(ini,ini+PP_venc), tp=Math.ceil(vencidas.length/PP_venc);
+  const hoyRef=new Date(); hoyRef.setHours(0,0,0,0);
+
+  if(isMobile()){
+    ct.innerHTML='<div style="padding:8px 12px">'+pg.map(p=>{
+      const v=pf(p.fVto), ds=v?Math.round((hoyRef-v)/864e5):0;
+      return `<div class="m-card">
+        <div class="m-card-top">
+          <div><div class="m-card-nom">Póliza ${p.nroPoliza||'-'}</div><div class="m-card-sub">${nCli(p.idCliente)}</div></div>
+          <span class="badge badge-ro">Venció hace ${ds} días</span>
+        </div>
+        <div class="m-card-tags">
+          <span class="m-card-tag">${(p.tipo||p.observ)||'-'}</span>
+          <span class="m-card-tag">${p.compania||'-'}</span>
+          <span class="m-card-tag" style="color:var(--danger)">Vto: ${p.fVto||'-'}</span>
+        </div>
+        <div class="m-card-btns">
+          <button class="m-card-btn" onclick="verFicha('${p.idCliente}')">Ver cliente</button>
+          <button class="m-card-btn" onclick="renovarPoliza('${p.id}')">Renovar</button>
+          <button class="m-card-btn danger" onclick="bajarPoliza('${p.id}')">Anular</button>
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+  } else {
+    const rows = pg.map(p=>{
+      const v=pf(p.fVto), ds=v?Math.round((hoyRef-v)/864e5):0;
+      return `<tr>
+        <td class="nm">${p.nroPoliza||'-'}</td>
+        <td>${nCli(p.idCliente)}</td>
+        <td>${(p.tipo||p.observ)||'-'}</td>
+        <td>${p.compania||'-'}</td>
+        <td style="color:var(--danger);font-weight:600">${p.fVto||'-'}</td>
+        <td><span class="badge badge-ro">Hace ${ds} días</span></td>
+        <td>${p.prima?'$'+Number(p.prima).toLocaleString('es-AR'):'-'}</td>
+        <td><div style="display:flex;gap:4px">
+          <button class="btn btn-ghost btn-xs" onclick="verFicha('${p.idCliente}')">Ver</button>
+          <button class="btn btn-success btn-xs" onclick="renovarPoliza('${p.id}')">Renovar</button>
+          <button class="btn btn-danger btn-xs" onclick="bajarPoliza('${p.id}')">Anular</button>
+        </div></td>
+      </tr>`;
+    }).join('');
+    ct.innerHTML=`<div class="tw"><table>
+      <thead><tr><th>Nro.</th><th>Cliente</th><th>Tipo</th><th>Compañía</th><th>Venció</th><th>Hace</th><th>Prima</th><th>Acciones</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`+paginacion(pC_venc,tp,'pC_venc','renVenc')+
+    `<div style="padding:8px 20px 12px;font-size:12px;color:var(--txt3)">Mostrando ${ini+1}–${Math.min(ini+PP_venc,vencidas.length)} de ${vencidas.length}</div>`;
+  }
+
+  // Guardar para export
+  window._vencidasFiltradas = vencidas;
+};
+
+// Botón "→ Mover a Vencidas" desde alertas
+window.pasarAVencidas = () => {
+  const filFecha = document.getElementById('fil-fecha-al').value;
+  ir('venc');
+  if(filFecha) {
+    document.getElementById('fil-fecha-venc').value = filFecha;
+  }
+  renVenc();
+};
+
+window.exportarVencExcel = () => {
+  const venc = window._vencidasFiltradas || [];
+  if(!venc.length){toast('Sin datos para exportar','ro');return;}
+  const data = venc.map(p=>({
+    'Nro Póliza': p.nroPoliza,
+    'Cliente': nCli(p.idCliente),
+    'Tipo': p.tipo||p.observ,
+    'Compañía': p.compania,
+    'Prima': p.prima,
+    'Premio': p.premio,
+    'F.Inicio': p.fInicio,
+    'F.Vencimiento': p.fVto,
+    'Estado': p.estado
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2, ws, 'Vencidas');
+  XLSX.writeFile(wb2, 'polizas_vencidas_'+new Date().toLocaleDateString('es-AR').replace(/\//g,'-')+'.xlsx');
+  toast('Excel descargado','vd');
+};
+
 // ── CONFIGURACION (tipos y compañías) ────────────────────────
 let TIPOS = [], COMPANIAS = [];
 
@@ -1125,12 +1281,24 @@ let importData = null;
 
 const lim = v => (v===null||v===undefined||String(v).trim()==='NaN'||String(v).trim()==='NaT')?'':String(v).trim();
 const fmtF = v => {
-  if(!v||lim(v)==='') return '';
+  if(v===null||v===undefined) return '';
+  // Número serial de Excel (días desde 1/1/1900)
+  if(typeof v === 'number') {
+    if(v === 0) return '';
+    // Excel serial date: días desde 1/1/1900, ajustar bug de 1900
+    const d = new Date(Date.UTC(1900,0,1) + (v - 2) * 864e5);
+    if(!isNaN(d) && d.getFullYear()>1900 && d.getFullYear()<2100)
+      return d.toLocaleDateString('es-AR');
+    return '';
+  }
+  const s = String(v).trim();
+  if(!s || s==='NaN' || s==='NaT') return '';
   try {
-    const d = new Date(v);
-    if(!isNaN(d) && d.getFullYear()>1900) return d.toLocaleDateString('es-AR');
+    const d = new Date(s);
+    if(!isNaN(d) && d.getFullYear()>1900 && d.getFullYear()<2100)
+      return d.toLocaleDateString('es-AR');
   } catch(e){}
-  return lim(v);
+  return s;
 };
 
 window.previewImport = async (input) => {
