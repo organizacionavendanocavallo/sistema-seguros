@@ -286,6 +286,10 @@ td.nm{color:var(--txt);font-weight:600}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
       Pólizas <span id="cnt-pol" style="font-size:11px;color:var(--txt3)"></span>
     </button>
+    <button class="ni" id="ni-cfg" onclick="ir('cfg')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+      Configuración
+    </button>
   </div>
   <div class="main">
 
@@ -355,13 +359,35 @@ td.nm{color:var(--txt);font-weight:600}
             </select>
             <select class="si" id="fil-estado" onchange="filtrarPol()">
               <option value="">Todos los estados</option>
-              <option>Vigente</option><option>Vencida</option><option>Cancelada</option>
+              <option>Vigente</option><option>Vencida</option><option>Anulada</option>
             </select>
             <button class="btn btn-success btn-sm" onclick="abrirPol(null)">+ Nueva póliza</button>
             <button class="btn btn-ghost btn-sm" onclick="exportarPolExcel()">⬇ Excel</button>
           </div>
         </div>
         <div id="body-pol"></div>
+      </div>
+    </div>
+
+    <!-- CONFIGURACION -->
+    <div class="tab" id="tab-cfg">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px">
+        <!-- Tipos de póliza -->
+        <div class="panel">
+          <div class="panel-hd">
+            <h3>Tipos de póliza</h3>
+            <button class="btn btn-success btn-sm" onclick="abrirCfgItem('tipo')">+ Agregar</button>
+          </div>
+          <div id="lista-tipos" style="padding:8px 0"></div>
+        </div>
+        <!-- Compañías aseguradoras -->
+        <div class="panel">
+          <div class="panel-hd">
+            <h3>Compañías aseguradoras</h3>
+            <button class="btn btn-success btn-sm" onclick="abrirCfgItem('compania')">+ Agregar</button>
+          </div>
+          <div id="lista-companias" style="padding:8px 0"></div>
+        </div>
       </div>
     </div>
 
@@ -431,9 +457,12 @@ td.nm{color:var(--txt);font-weight:600}
         <div class="ff"><label>Cliente *</label><select id="pCli"></select></div>
         <div><label>Número de póliza *</label><input id="pNro" type="text" placeholder="Ej: 123456-7"></div>
         <div><label>Tipo de póliza</label>
-          <select id="pTipo"><option>Automotor</option><option>Hogar / Consorcio</option><option>Vida / Accidentes personales</option><option>Comercio / PyME</option><option>ART / Salud</option></select>
+          <select id="pTipo"><option value="">— Seleccionar —</option></select>
         </div>
-        <div><label>Compañía aseguradora</label><input id="pComp" type="text" placeholder="Ej: Galicia Seguros"></div>
+        <div><label>Compañía aseguradora</label>
+          <select id="pCompSel"><option value="">— Seleccionar —</option></select>
+        </div>
+        <div style="display:none"><label>Compañía (texto)</label><input id="pComp" type="text"></div>
         <div><label>Suma asegurada ($)</label><input id="pSuma" type="number" placeholder="0"></div>
         <div><label>Prima ($)</label><input id="pPrima" type="number" placeholder="0"></div>
         <div><label>Premio ($)</label><input id="pPremio" type="number" placeholder="0"></div>
@@ -443,7 +472,7 @@ td.nm{color:var(--txt);font-weight:600}
         <div><label>Fecha de inicio</label><input id="pFIni" type="date"></div>
         <div><label>Fecha de vencimiento *</label><input id="pFVto" type="date"></div>
         <div><label>Estado</label>
-          <select id="pEst"><option>Vigente</option><option>Vencida</option><option>Cancelada</option></select>
+          <select id="pEst"><option>Vigente</option><option>Vencida</option><option>Anulada</option></select>
         </div>
         <div class="ff"><label>Observaciones</label><textarea id="pObs" rows="3" style="resize:vertical" placeholder="Notas adicionales..."></textarea></div>
       </div>
@@ -518,6 +547,7 @@ async function cargarDatos(){
       getDocs(query(collection(db,'clientes'),orderBy('nombre'))),
       getDocs(collection(db,'polizas'))
     ]);
+    await cargarCfg();
     C=[]; sc.forEach(d=>C.push({id:d.id,...d.data()}));
     P=[]; sp.forEach(d=>P.push({id:d.id,...d.data()}));
     CF=C.slice(); PF=P.slice();
@@ -536,11 +566,11 @@ window.calcAlertas=()=>{
 
   // Alertas de pólizas
   P.forEach(p=>{
-    if(!p.fVto||p.estado==='Cancelada') return;
+    if(!p.fVto||p.estado==='Anulada') return;
     const v=pf(p.fVto); if(!v) return;
     const ds=Math.round((v-hoy)/864e5);
     const nv=ds<0?'vencida':ds===0?'hoy':ds<=15?'urgente':ds<=30?'proxima':null;
-    if(nv) al.push({tipo:'poliza',nivel:nv,dias:ds,titulo:nCli(p.idCliente),sub:'Póliza '+(p.nroPoliza||'-')+' — '+(p.tipo||'-')+' — '+(p.compania||'-'),fecha:p.fVto,prima:p.prima,id:p.id,idCli:p.idCliente});
+    if(nv) al.push({tipo:'poliza',nivel:nv,dias:ds,titulo:nCli(p.idCliente),sub:'Póliza '+(p.nroPoliza||'-')+' — '+((p.tipo||p.observ)||'-')+((p.tipo&&p.observ&&p.observ!==p.tipo)?' — '+p.observ:'')+' — '+(p.compania||'-'),fecha:p.fVto,prima:p.prima,id:p.id,idCli:p.idCliente});
   });
 
   // Alertas de tarjetas
@@ -588,7 +618,8 @@ window.calcAlertas=()=>{
         <div class="al-sub">${a.sub}</div>
         <div class="al-btns">
           <button class="btn btn-ghost btn-xs" onclick="verFicha('${a.idCli}')">Ver cliente</button>
-          ${a.tipo==='poliza'?`<button class="btn btn-primary btn-xs" onclick="abrirPol('${a.id}')">Editar póliza</button>`:''}
+          ${a.tipo==='poliza'?`<button class="btn btn-primary btn-xs" onclick="abrirPol('${a.id}')">Editar</button>`:''}
+          ${a.tipo==='poliza'?`<button class="btn btn-success btn-xs" onclick="renovarPoliza('${a.id}')">Renovar</button>`:''}
         </div>
       </div>
       <div class="al-right">
@@ -709,7 +740,7 @@ window.verFicha=id=>{
       h+=`<div class="ficha-pol">
         <div>
           <div class="ficha-pol-nom">Póliza ${p.nroPoliza||'-'} ${badge}</div>
-          <div class="ficha-pol-det">${p.tipo||'-'} — ${p.compania||'-'}</div>
+          <div class="ficha-pol-det">${(p.tipo||p.observ||'-')+((p.tipo&&p.observ&&p.observ!==p.tipo)?' — '+p.observ:'')} — ${p.compania||'-'}</div>
           <div class="ficha-pol-det" style="display:flex;gap:14px;margin-top:4px">
             ${p.prima?'<span><strong>Prima:</strong> $'+Number(p.prima).toLocaleString('es-AR')+'</span>':''}
             ${p.premio?'<span><strong>Premio:</strong> $'+Number(p.premio).toLocaleString('es-AR')+'</span>':''}
@@ -799,10 +830,11 @@ function renPol(){
       return `<div class="m-card">
         <div class="m-card-top">
           <div><div class="m-card-nom">Póliza ${p.nroPoliza||'-'}</div><div class="m-card-sub">${nCli(p.idCliente)}</div></div>
-          <span class="badge ${p.estado==='Vigente'?'badge-vd':p.estado==='Cancelada'?'badge-gr':'badge-ro'}">${p.estado||'-'}</span>
+          <span class="badge ${p.estado==='Vigente'?'badge-vd':p.estado==='Anulada'?'badge-gr':'badge-ro'}">${p.estado||'-'}</span>
         </div>
         <div class="m-card-tags">
-          <span class="m-card-tag">${p.tipo||'-'}</span>
+          <span class="m-card-tag">${(p.tipo||p.observ)||'-'}</span>
+          ${(p.tipo&&p.observ&&p.observ!==p.tipo)?`<span class="m-card-tag">${p.observ}</span>`:''}
           ${p.compania?`<span class="m-card-tag">${p.compania}</span>`:''}
           ${p.fVto?`<span class="m-card-tag" style="${vtoStyle}">Vto: ${p.fVto}</span>`:''}
           ${p.prima?`<span class="m-card-tag">$${Number(p.prima).toLocaleString('es-AR')}</span>`:''}
@@ -822,12 +854,13 @@ function renPol(){
       return `<tr>
         <td class="nm">${p.nroPoliza||'-'}</td>
         <td>${nCli(p.idCliente)}</td>
+        <td>${(p.tipo||p.observ)||'-'}</td>
         <td>${p.compania||'-'}</td>
-        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.observ||'-'}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.tipo&&p.observ&&p.observ!==p.tipo)?p.observ:''}</td>
         <td>${p.prima?'$'+Number(p.prima).toLocaleString('es-AR'):'-'}</td>
         <td>${p.premio?'$'+Number(p.premio).toLocaleString('es-AR'):'-'}</td>
         <td><span style="${ev}">${p.fVto||'-'}</span></td>
-        <td><span class="badge ${p.estado==='Vigente'?'badge-vd':p.estado==='Cancelada'?'badge-gr':'badge-ro'}">${p.estado||'-'}</span></td>
+        <td><span class="badge ${p.estado==='Vigente'?'badge-vd':p.estado==='Anulada'?'badge-gr':'badge-ro'}">${p.estado||'-'}</span></td>
         <td><div style="display:flex;gap:4px">
           <button class="btn btn-ghost btn-xs" onclick="abrirPol('${p.id}')">Editar</button>
           <button class="btn btn-success btn-xs" onclick="renovarPoliza('${p.id}')">Renovar</button>
@@ -836,7 +869,7 @@ function renPol(){
       </tr>`;
     }).join('');
     ct.innerHTML=`<div class="tw"><table>
-      <thead><tr><th>Nro.</th><th>Cliente</th><th>Compañía</th><th>Objeto</th><th>Prima</th><th>Premio</th><th>Vencimiento</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <thead><tr><th>Nro.</th><th>Cliente</th><th>Tipo</th><th>Compañía</th><th>Detalle</th><th>Prima</th><th>Premio</th><th>Vencimiento</th><th>Estado</th><th>Acciones</th></tr></thead>
       <tbody>${rows||'<tr class="empty"><td colspan="8">Sin resultados.</td></tr>'}</tbody>
     </table></div>`+paginacion(pP,tp,'pP','renPol')+`<div style="padding:8px 20px 12px;font-size:12px;color:var(--txt3)">Mostrando ${ini+1}–${Math.min(ini+PP,PF.length)} de ${PF.length}</div>`;
   }
@@ -853,8 +886,8 @@ window.abrirPol=id=>{
     const m={pId:p.id,pNro:p.nroPoliza,pComp:p.compania,pSuma:p.sumaAse,pPrima:p.prima,pPremio:p.premio,pFIni:p.fInicio,pFVto:p.fVto,pObs:p.observ};
     Object.entries(m).forEach(([k,v])=>sg(k,v));
     sel.value=p.idCliente;
-    sg('pTipo',p.tipo); sg('pFrec',p.frecuencia); sg('pEst',p.estado);
-  } else { document.getElementById('mo-pol-titulo').textContent='Nueva póliza'; }
+    sg('pTipo',p.tipo||''); sg('pFrec',p.frecuencia||'Anual'); sg('pEst',p.estado||'Vigente'); sg('pCompSel',p.compania||''); sg('pComp',p.compania||'');
+  } else { document.getElementById('mo-pol-titulo').textContent='Nueva póliza'; sg('pCompSel',''); sg('pComp',''); }
   abrir('mo-pol');
 };
 
@@ -872,7 +905,7 @@ window.guardarPol=async()=>{
   const nro=gv('pNro'),idc=document.getElementById('pCli').value;
   if(!nro){toast('El número de póliza es obligatorio','ro');return;}
   const id=gv('pId');
-  const d={idCliente:idc,nroPoliza:nro,tipo:document.getElementById('pTipo').value,compania:gv('pComp'),sumaAse:gv('pSuma'),prima:gv('pPrima'),premio:gv('pPremio'),frecuencia:document.getElementById('pFrec').value,fInicio:gv('pFIni'),fVto:gv('pFVto'),estado:document.getElementById('pEst').value,observ:gv('pObs'),actualizado:new Date().toLocaleDateString('es-AR')};
+  const d={idCliente:idc,nroPoliza:nro,tipo:document.getElementById('pTipo').value,compania:(document.getElementById('pCompSel').value||gv('pComp')),sumaAse:gv('pSuma'),prima:gv('pPrima'),premio:gv('pPremio'),frecuencia:document.getElementById('pFrec').value,fInicio:gv('pFIni'),fVto:gv('pFVto'),estado:document.getElementById('pEst').value,observ:gv('pObs'),actualizado:new Date().toLocaleDateString('es-AR')};
   try{
     if(id){await updateDoc(doc(db,'polizas',id),d);}
     else{d.creado=new Date().toLocaleDateString('es-AR');await addDoc(collection(db,'polizas'),d);}
@@ -883,7 +916,7 @@ window.guardarPol=async()=>{
 window.bajarPoliza=async id=>{
   if(!confirm('¿Dar de baja esta póliza?'))return;
   try{
-    await updateDoc(doc(db,'polizas',id),{estado:'Cancelada',actualizado:new Date().toLocaleDateString('es-AR')});
+    await updateDoc(doc(db,'polizas',id),{estado:'Anulada',actualizado:new Date().toLocaleDateString('es-AR')});
     toast('Póliza dada de baja','vd'); cargarDatos();
   }catch(e){toast('Error: '+e.message,'ro');}
 };
@@ -977,6 +1010,115 @@ window.cerrar=id=>document.getElementById(id).classList.remove('on');
 let _tt;
 function toast(m,tp){const t=document.getElementById('toast');t.textContent=m;t.className='toast '+(tp||'ok');t.style.display='block';clearTimeout(_tt);_tt=setTimeout(()=>t.style.display='none',3000);}
 window.toast=toast;
+
+// ── CONFIGURACION (tipos y compañías) ────────────────────────
+let TIPOS = [], COMPANIAS = [];
+
+async function cargarCfg() {
+  try {
+    const [st, sc] = await Promise.all([
+      getDocs(collection(db,'tipos_poliza')),
+      getDocs(collection(db,'companias'))
+    ]);
+    TIPOS = []; st.forEach(d=>TIPOS.push({id:d.id,...d.data()}));
+    COMPANIAS = []; sc.forEach(d=>COMPANIAS.push({id:d.id,...d.data()}));
+    // Si no hay tipos, cargar defaults
+    if(!TIPOS.length) await seedDefaults();
+    renderCfg();
+    poblarSelects();
+  } catch(e) { console.error('Error cfg:', e); }
+}
+
+async function seedDefaults() {
+  const defTipos = ['Automotor','Hogar / Consorcio','Vida / Accidentes personales','Comercio / PyME','ART / Salud'];
+  const defComp = ['Galicia Seguros','MAPFRE Argentina','La Caja','Sancor Seguros','Federacion Patronal','Zurich','HDI Seguros','Rivadavia','San Cristóbal'];
+  const b1 = writeBatch(db);
+  defTipos.forEach(n=>{ const r=doc(collection(db,'tipos_poliza')); b1.set(r,{nombre:n}); });
+  await b1.commit();
+  const b2 = writeBatch(db);
+  defComp.forEach(n=>{ const r=doc(collection(db,'companias')); b2.set(r,{nombre:n}); });
+  await b2.commit();
+  const [st,sc] = await Promise.all([getDocs(collection(db,'tipos_poliza')),getDocs(collection(db,'companias'))]);
+  TIPOS=[]; st.forEach(d=>TIPOS.push({id:d.id,...d.data()}));
+  COMPANIAS=[]; sc.forEach(d=>COMPANIAS.push({id:d.id,...d.data()}));
+}
+
+function renderCfg() {
+  const lt = document.getElementById('lista-tipos');
+  const lc = document.getElementById('lista-companias');
+  if(!lt||!lc) return;
+  const mkItem = (item, coleccion) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px;border-bottom:1px solid var(--border)">
+      <span style="font-size:14px">${item.nombre}</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-xs" onclick="editarCfgItem('${coleccion}','${item.id}','${item.nombre.replace(/'/g,"\'")}')">Editar</button>
+        <button class="btn btn-danger btn-xs" onclick="eliminarCfgItem('${coleccion}','${item.id}','${item.nombre.replace(/'/g,"\'")}')">Eliminar</button>
+      </div>
+    </div>`;
+  lt.innerHTML = TIPOS.map(t=>mkItem(t,'tipos_poliza')).join('') || '<div style="padding:20px;color:var(--txt3);text-align:center">Sin tipos cargados</div>';
+  lc.innerHTML = COMPANIAS.map(c=>mkItem(c,'companias')).join('') || '<div style="padding:20px;color:var(--txt3);text-align:center">Sin compañías cargadas</div>';
+}
+
+function poblarSelects() {
+  const sTipo = document.getElementById('pTipo');
+  const sComp = document.getElementById('pCompSel');
+  if(sTipo) {
+    const valActual = sTipo.value;
+    sTipo.innerHTML = '<option value="">— Seleccionar tipo —</option>' +
+      TIPOS.sort((a,b)=>a.nombre.localeCompare(b.nombre,'es')).map(t=>`<option value="${t.nombre}">${t.nombre}</option>`).join('');
+    if(valActual) sTipo.value = valActual;
+  }
+  if(sComp) {
+    const valActual = sComp.value;
+    sComp.innerHTML = '<option value="">— Seleccionar compañía —</option>' +
+      COMPANIAS.sort((a,b)=>a.nombre.localeCompare(b.nombre,'es')).map(c=>`<option value="${c.nombre}">${c.nombre}</option>`).join('');
+    if(valActual) sComp.value = valActual;
+  }
+}
+
+window.abrirCfgItem = (tipo) => {
+  sg('cfgTipo', tipo);
+  sg('cfgId', '');
+  sg('cfgNombre', '');
+  document.getElementById('mo-cfg-titulo').textContent = tipo==='tipo' ? 'Agregar tipo de póliza' : 'Agregar compañía';
+  document.getElementById('cfgLabel').textContent = tipo==='tipo' ? 'Nombre del tipo' : 'Nombre de la compañía';
+  abr('mo-cfg');
+};
+
+window.editarCfgItem = (coleccion, id, nombre) => {
+  sg('cfgTipo', coleccion==='tipos_poliza'?'tipo':'compania');
+  sg('cfgId', id);
+  sg('cfgNombre', nombre);
+  const esTipo = coleccion==='tipos_poliza';
+  document.getElementById('mo-cfg-titulo').textContent = esTipo ? 'Editar tipo de póliza' : 'Editar compañía';
+  document.getElementById('cfgLabel').textContent = esTipo ? 'Nombre del tipo' : 'Nombre de la compañía';
+  abr('mo-cfg');
+};
+
+window.guardarCfgItem = async () => {
+  const tipo = gv('cfgTipo');
+  const id = gv('cfgId');
+  const nombre = gv('cfgNombre').trim();
+  if(!nombre) { toast('El nombre es obligatorio','ro'); return; }
+  const coleccion = tipo==='tipo' ? 'tipos_poliza' : 'companias';
+  try {
+    if(id) { await updateDoc(doc(db,coleccion,id),{nombre}); }
+    else { await addDoc(collection(db,coleccion),{nombre}); }
+    toast('Guardado','vd');
+    cerrar('mo-cfg');
+    await cargarCfg();
+  } catch(e) { toast('Error: '+e.message,'ro'); }
+};
+
+window.eliminarCfgItem = async (coleccion, id, nombre) => {
+  if(!confirm('¿Eliminar "'+nombre+'"?')) return;
+  try {
+    await deleteDoc(doc(db,coleccion,id));
+    toast('Eliminado','vd');
+    await cargarCfg();
+  } catch(e) { toast('Error: '+e.message,'ro'); }
+};
+
 
 // ── IMPORTAR EXCEL (batch writes - rápido) ───────────────────
 let importData = null;
@@ -1092,7 +1234,7 @@ window.ejecutarImport = async () => {
       fInicio: fmtF(p['FECHA DE INICIO']),
       fVto: fmtF(p['FECHA DE VENCIMIENTO']),
       fAnulacion: fmtF(p['FECHA DE ANULACIÓN']),
-      estado: anulada ? 'Cancelada' : 'Vigente',
+      estado: anulada ? 'Anulada' : 'Vigente',
       renovada: String(p['RENOVADA']||'').toLowerCase()==='true',
       creado: new Date().toLocaleDateString('es-AR')
     });
@@ -1120,6 +1262,25 @@ window.ejecutarImport = async () => {
 document.querySelectorAll('.ov').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('on');}));
 </script>
 
+
+
+<!-- MODAL CONFIG ITEM -->
+<div class="ov" id="mo-cfg">
+  <div class="mo" style="max-width:400px">
+    <div class="mo-hd"><h3 id="mo-cfg-titulo">Agregar tipo</h3><button class="mo-x" onclick="cerrar('mo-cfg')">✕</button></div>
+    <div class="mo-bd">
+      <input type="hidden" id="cfgTipo">
+      <input type="hidden" id="cfgId">
+      <div class="fg">
+        <div class="ff"><label id="cfgLabel">Nombre</label><input id="cfgNombre" type="text" placeholder="Ej: Automotor"></div>
+      </div>
+    </div>
+    <div class="mo-ft">
+      <button class="btn btn-ghost" onclick="cerrar('mo-cfg')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCfgItem()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL RENOVAR POLIZA -->
 <div class="ov" id="mo-renov">
