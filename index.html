@@ -313,22 +313,47 @@ td.nm{color:var(--txt);font-weight:600}
         <div class="stat-card"><div class="stat-icon az">🔵</div><div><div class="stat-n az" id="s-ref-prox">0</div><div class="stat-l">Refact. en 10 días</div></div></div>
         <div class="stat-card"><div class="stat-icon vd">✅</div><div><div class="stat-n vd" id="s-ref-total">0</div><div class="stat-l">Total pólizas activas</div></div></div>
       </div>
-      <div class="panel" style="margin-bottom:16px">
-        <div class="panel-hd">
-          <h3>Alertas de vencimiento</h3>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" onclick="calcAlertas()">↻ Actualizar</button>
-            <button class="btn btn-danger btn-sm" onclick="archivarVencidas()">📁 Archivar vencidas</button>
-          </div>
-        </div>
-        <div style="padding:16px 20px" id="lista-al"><div style="text-align:center;padding:40px;color:var(--txt3)">Cargando alertas...</div></div>
+      <!-- Panel actualizar -->
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="calcAlertas()">↻ Actualizar alertas</button>
+        <button class="btn btn-danger btn-sm" onclick="archivarVencidas()">📁 Archivar vencidas</button>
       </div>
-      <div class="panel">
-        <div class="panel-hd">
-          <h3>Alertas de refacturación <span style="font-size:12px;font-weight:400;color:var(--txt3)">— 10 días antes de cada vencimiento de cuota</span></h3>
-          <button class="btn btn-ghost btn-sm" onclick="calcAlertas()">↻ Actualizar</button>
+
+      <!-- Panel vencimientos -->
+      <div class="panel" style="margin-bottom:12px">
+        <div class="panel-hd" onclick="togglePanel('lista-al','ico-al')" style="cursor:pointer;user-select:none">
+          <h3>
+            <span id="ico-al" style="font-size:13px;margin-right:4px;transition:transform .2s;display:inline-block;transform:rotate(0deg)">▶</span>
+            Alertas de vencimiento
+            <span id="cnt-al" style="font-size:12px;font-weight:400;color:var(--txt3)"></span>
+          </h3>
         </div>
-        <div style="padding:16px 20px" id="lista-ref"><div style="text-align:center;padding:40px;color:var(--txt3)">Cargando...</div></div>
+        <div id="lista-al" style="display:none;padding:16px 20px"></div>
+      </div>
+
+      <!-- Panel tarjetas -->
+      <div class="panel" style="margin-bottom:12px">
+        <div class="panel-hd" onclick="togglePanel('lista-tarj','ico-tarj')" style="cursor:pointer;user-select:none">
+          <h3>
+            <span id="ico-tarj" style="font-size:13px;margin-right:4px;transition:transform .2s;display:inline-block;transform:rotate(0deg)">▶</span>
+            Alertas de tarjetas
+            <span id="cnt-tarj" style="font-size:12px;font-weight:400;color:var(--txt3)"></span>
+          </h3>
+        </div>
+        <div id="lista-tarj" style="display:none;padding:16px 20px"></div>
+      </div>
+
+      <!-- Panel refacturaciones -->
+      <div class="panel" style="margin-bottom:12px">
+        <div class="panel-hd" onclick="togglePanel('lista-ref','ico-ref')" style="cursor:pointer;user-select:none">
+          <h3>
+            <span id="ico-ref" style="font-size:13px;margin-right:4px;transition:transform .2s;display:inline-block;transform:rotate(0deg)">▶</span>
+            Alertas de refacturación
+            <span style="font-size:12px;font-weight:400;color:var(--txt3)">— 10 días antes de cada cuota</span>
+            <span id="cnt-ref" style="font-size:12px;font-weight:400;color:var(--txt3)"></span>
+          </h3>
+        </div>
+        <div id="lista-ref" style="display:none;padding:16px 20px"></div>
       </div>
     </div>
 
@@ -600,7 +625,8 @@ window.calcAlertas=()=>{
     if(nv) al.push({tipo:'poliza',nivel:nv,dias:ds,titulo:nCli(p.idCliente),sub:'Póliza '+(p.nroPoliza||'-')+' — '+((p.tipo||p.observ)||'-')+((p.tipo&&p.observ&&p.observ!==p.tipo)?' — '+p.observ:'')+' — '+(p.compania||'-'),fecha:p.fVto,prima:p.prima,id:p.id,idCli:p.idCliente});
   });
 
-  // Alertas de tarjetas
+  // Alertas de tarjetas (lista separada)
+  const alTarj=[];
   C.forEach(c=>{
     ['tarj1','tarj2'].forEach((t,i)=>{
       const vto=i===0?c.vtoT1:c.vtoT2;
@@ -609,53 +635,133 @@ window.calcAlertas=()=>{
       const v=pfTarjeta(vto); if(!v) return;
       const ds=Math.round((v-hoy)/864e5);
       const nv=ds<0?'vencida':ds===0?'hoy':ds<=15?'urgente':ds<=30?'proxima':null;
-      if(nv) al.push({tipo:'tarjeta',nivel:nv,dias:ds,titulo:c.nombre,sub:'Tarjeta '+(i+1)+': '+num,fecha:vto,id:c.id,idCli:c.id});
+      if(nv) alTarj.push({tipo:'tarjeta',nivel:nv,dias:ds,titulo:c.nombre,sub:'Tarjeta '+(i+1)+': '+num,fecha:vto,id:c.id,idCli:c.id});
     });
   });
+  alTarj.sort((a,b)=>a.dias-b.dias);
 
   // Ordenar
   const ord={vencida:0,hoy:1,urgente:2,proxima:3};
   al.sort((a,b)=>ord[a.nivel]!==ord[b.nivel]?ord[a.nivel]-ord[b.nivel]:a.dias-b.dias);
 
   // Stats
-  const sv=al.filter(a=>a.nivel==='vencida'&&a.tipo==='poliza').length;
-  const su=al.filter(a=>a.nivel==='urgente'&&a.tipo==='poliza').length;
-  const sp=al.filter(a=>a.nivel==='proxima'&&a.tipo==='poliza').length;
-  const st=al.filter(a=>a.tipo==='tarjeta').length;
+  const sv=al.filter(a=>a.nivel==='vencida').length;
+  const su=al.filter(a=>a.nivel==='urgente').length;
+  const sp=al.filter(a=>a.nivel==='proxima').length;
+  const st=alTarj.length;
   document.getElementById('s-venc').textContent=sv;
   document.getElementById('s-urg').textContent=su;
   document.getElementById('s-prox').textContent=sp;
   document.getElementById('s-tarj').textContent=st;
-  const tot=sv+su+al.filter(a=>a.nivel==='hoy').length;
+  const tot=sv+su+al.filter(a=>a.nivel==='hoy').length+alTarj.filter(a=>a.nivel==='hoy'||a.nivel==='vencida'||a.nivel==='urgente').length;
   const b=document.getElementById('badge-al');
   if(tot>0){b.textContent=tot;b.style.display='inline';}else b.style.display='none';
 
-  const l=document.getElementById('lista-al');
-  if(!al.length){l.innerHTML='<div class="empty" style="cursor:default">✅ Todo en orden — no hay vencimientos próximos</div>';return;}
-
   const etqs={vencida:'VENCIDA',hoy:'HOY',urgente:'URGENTE',proxima:'PRÓXIMA'};
   const cols={vencida:'badge-ro',hoy:'badge-ro',urgente:'badge-na',proxima:'badge-vd'};
-  l.innerHTML=al.map(a=>{
+
+  const mkAlItem=(a,icono,btns)=>{
     const dt=a.dias<0?'Venció hace '+Math.abs(a.dias)+' días':a.dias===0?'Vence hoy':'Vence en '+a.dias+' días';
-    const icono=a.tipo==='tarjeta'?'💳':'📋';
-    return `<div class="al-item ${a.nivel}">
-      <div class="al-dot ${a.nivel}"></div>
-      <div class="al-body">
-        <div class="al-titulo">${icono} ${a.titulo}</div>
-        <div class="al-sub">${a.sub}</div>
-        <div class="al-btns">
-          <button class="btn btn-ghost btn-xs" onclick="verFicha('${a.idCli}')">Ver cliente</button>
-          ${a.tipo==='poliza'?`<button class="btn btn-primary btn-xs" onclick="abrirPol('${a.id}')">Editar</button>`:''}
-          ${a.tipo==='poliza'?`<button class="btn btn-success btn-xs" onclick="renovarPoliza('${a.id}')">Renovar</button>`:''}
-        </div>
-      </div>
-      <div class="al-right">
-        <div class="al-fecha">${a.fecha}</div>
-        <div class="al-dias">${dt}</div>
-        <span class="badge ${cols[a.nivel]}" style="margin-top:6px">${etqs[a.nivel]}</span>
-      </div>
-    </div>`;
-  }).join('');
+    return '<div class="al-item '+a.nivel+'">'
+      +'<div class="al-dot '+a.nivel+'"></div>'
+      +'<div class="al-body"><div class="al-titulo">'+icono+' '+a.titulo+'</div>'
+      +'<div class="al-sub">'+a.sub+'</div>'
+      +'<div class="al-btns">'+btns+'</div></div>'
+      +'<div class="al-right"><div class="al-fecha">'+a.fecha+'</div><div class="al-dias">'+dt+'</div>'
+      +'<span class="badge '+cols[a.nivel]+'" style="margin-top:6px">'+etqs[a.nivel]+'</span></div></div>';
+  };
+
+  // Panel vencimientos
+  const l=document.getElementById('lista-al');
+  const cntAl=document.getElementById('cnt-al');
+  if(!al.length){
+    l.innerHTML='<div class="empty" style="cursor:default">✅ Sin vencimientos próximos</div>';
+    if(cntAl) cntAl.textContent='';
+  } else {
+    if(cntAl) cntAl.textContent='('+al.length+')';
+    l.innerHTML=al.map(a=>mkAlItem(a,'📋',
+      '<button class="btn btn-ghost btn-xs" onclick="verFicha(\'' +a.idCli+ '\')">Ver cliente</button>'
+      +'<button class="btn btn-primary btn-xs" onclick="abrirPol(\'' +a.id+ '\')">Editar</button>'
+      +'<button class="btn btn-success btn-xs" onclick="renovarPoliza(\'' +a.id+ '\')">Renovar</button>'
+    )).join('');
+  }
+
+  // Panel tarjetas
+  const lt=document.getElementById('lista-tarj');
+  const cntTarj=document.getElementById('cnt-tarj');
+  if(!alTarj.length){
+    lt.innerHTML='<div class="empty" style="cursor:default">✅ Sin tarjetas por vencer</div>';
+    if(cntTarj) cntTarj.textContent='';
+  } else {
+    if(cntTarj) cntTarj.textContent='('+alTarj.length+')';
+    lt.innerHTML=alTarj.map(a=>mkAlItem(a,'💳',
+      '<button class="btn btn-ghost btn-xs" onclick="verFicha(\'' +a.idCli+ '\')">Ver cliente</button>'
+      +'<button class="btn btn-primary btn-xs" onclick="abrirCli(\'' +a.id+ '\')">Editar cliente</button>'
+    )).join('');
+  }
+
+  // ── Refacturaciones ──────────────────────────────────────────
+  const ref=[];
+  const freqMeses={Mensual:1,Trimestral:3,Cuatrimestral:4,Semestral:6,Anual:12};
+  P.forEach(p=>{
+    if(p.estado==='Anulada'||p.estado==='Renovada'||p.archivada) return;
+    if(!p.fInicio||!p.fVto||!p.frecuencia) return;
+    const meses=freqMeses[p.frecuencia];
+    if(!meses) return;
+    const inicio=pf(p.fInicio), fin=pf(p.fVto);
+    if(!inicio||!fin) return;
+    const cur=new Date(inicio);
+    cur.setMonth(cur.getMonth()+meses);
+    while(cur<=fin){
+      const ds=Math.round((cur-hoy)/864e5);
+      if(ds>=-30&&ds<=10){
+        const nv=ds<0?'vencida':ds===0?'hoy':'proxima';
+        ref.push({nivel:nv,dias:ds,titulo:nCli(p.idCliente),
+          sub:'Póliza '+(p.nroPoliza||'-')+' — '+(p.compania||'-')+' — '+p.frecuencia,
+          fecha:cur.toLocaleDateString('es-AR'),
+          prima:p.prima,premio:p.premio,id:p.id,idCli:p.idCliente});
+      }
+      cur.setMonth(cur.getMonth()+meses);
+    }
+  });
+  ref.sort((a,b)=>a.dias-b.dias);
+
+  const rVenc=ref.filter(r=>r.nivel==='vencida').length;
+  const rHoy=ref.filter(r=>r.nivel==='hoy').length;
+  const rProx=ref.filter(r=>r.nivel==='proxima').length;
+  const rTotal=P.filter(p=>p.estado==='Vigente'&&!p.archivada).length;
+  document.getElementById('s-ref-venc').textContent=rVenc;
+  document.getElementById('s-ref-hoy').textContent=rHoy;
+  document.getElementById('s-ref-prox').textContent=rProx;
+  document.getElementById('s-ref-total').textContent=rTotal;
+
+  const lr=document.getElementById('lista-ref');
+  const cntRef=document.getElementById('cnt-ref');
+  if(!ref.length){
+    lr.innerHTML='<div class="empty" style="cursor:default">✅ Sin refacturaciones próximas</div>';
+    if(cntRef) cntRef.textContent='';
+  } else {
+    if(cntRef) cntRef.textContent='('+ref.length+')';
+    const colsR={vencida:'badge-ro',hoy:'badge-ro',proxima:'badge-az'};
+    const etqsR={vencida:'VENCIDA',hoy:'HOY',proxima:'PRÓXIMA'};
+    lr.innerHTML=ref.map(r=>{
+      const dt=r.dias<0?'Venció hace '+Math.abs(r.dias)+' días':r.dias===0?'Hoy':'En '+r.dias+' días';
+      return '<div class="al-item '+(r.nivel==='proxima'?'proxima':r.nivel)+'">'
+        +'<div class="al-dot '+(r.nivel==='proxima'?'proxima':r.nivel)+'"></div>'
+        +'<div class="al-body"><div class="al-titulo">🔄 '+r.titulo+'</div>'
+        +'<div class="al-sub">'+r.sub+'</div>'
+        +(r.prima||r.premio?'<div class="al-sub" style="margin-top:4px">'
+          +(r.prima?'Prima: <strong>$'+Number(r.prima).toLocaleString('es-AR')+'</strong> &nbsp;':'')
+          +(r.premio?'Premio: <strong>$'+Number(r.premio).toLocaleString('es-AR')+'</strong>':'')
+          +'</div>':'')
+        +'<div class="al-btns">'
+        +'<button class="btn btn-ghost btn-xs" onclick="verFicha(\''+r.idCli+'\')">Ver cliente</button>'
+        +'<button class="btn btn-primary btn-xs" onclick="abrirPol(\''+r.id+'\')">Ver póliza</button>'
+        +'</div></div>'
+        +'<div class="al-right"><div class="al-fecha">'+r.fecha+'</div><div class="al-dias">'+dt+'</div>'
+        +'<span class="badge '+colsR[r.nivel]+'" style="margin-top:6px">'+etqsR[r.nivel]+'</span></div></div>';
+    }).join('');
+  }
 };
 
 function pfTarjeta(s){
@@ -766,6 +872,15 @@ window.verFicha=id=>{
     </div>`;
   if(pols.length){
     const hoy=new Date(); hoy.setHours(0,0,0,0);
+    // Ordenar: vigentes primero, luego renovadas, luego vencidas/anuladas
+    const ordenEstado={Vigente:0,Renovada:1,Vencida:2,Anulada:3};
+    pols.sort((a,b)=>{
+      const oa=ordenEstado[a.estado]??2, ob=ordenEstado[b.estado]??2;
+      if(oa!==ob) return oa-ob;
+      // Dentro de vigentes, ordenar por vencimiento asc
+      const va=pf(a.fVto)||new Date(0), vb=pf(b.fVto)||new Date(0);
+      return va-vb;
+    });
     pols.forEach(p=>{
       const v=pf(p.fVto),ds=v?Math.round((v-hoy)/864e5):null;
       let badge='';
@@ -1101,6 +1216,15 @@ window.abrir=id=>document.getElementById(id).classList.add('on');
 window.cerrar=id=>document.getElementById(id).classList.remove('on');
 let _tt;
 function toast(m,tp){const t=document.getElementById('toast');t.textContent=m;t.className='toast '+(tp||'ok');t.style.display='block';clearTimeout(_tt);_tt=setTimeout(()=>t.style.display='none',3000);}
+
+window.togglePanel=(bodyId, icoId)=>{
+  const body=document.getElementById(bodyId);
+  const ico=document.getElementById(icoId);
+  if(!body||!ico) return;
+  const open=body.style.display==='none'||body.style.display==='';
+  body.style.display=open?'block':'none';
+  ico.style.transform=open?'rotate(90deg)':'rotate(0deg)';
+};
 window.toast=toast;
 
 
