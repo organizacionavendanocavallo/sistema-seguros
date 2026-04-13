@@ -588,10 +588,13 @@ window.calcAlertas=()=>{
   const hoy=new Date(); hoy.setHours(0,0,0,0);
   const al=[];
 
-  // Alertas de pólizas
+  // Alertas de pólizas — excluir archivadas, anuladas, renovadas y anteriores al 1/1/2026
+  const CORTE_AL = new Date('2026-01-01T00:00:00');
   P.forEach(p=>{
-    if(!p.fVto||p.estado==='Anulada') return;
+    if(!p.fVto||p.estado==='Anulada'||p.estado==='Renovada') return;
+    if(p.archivada) return;
     const v=pf(p.fVto); if(!v) return;
+    if(v < CORTE_AL) return; // anteriores al 1/1/2026 van a pestaña vencidas
     const ds=Math.round((v-hoy)/864e5);
     const nv=ds<0?'vencida':ds===0?'hoy':ds<=15?'urgente':ds<=30?'proxima':null;
     if(nv) al.push({tipo:'poliza',nivel:nv,dias:ds,titulo:nCli(p.idCliente),sub:'Póliza '+(p.nroPoliza||'-')+' — '+((p.tipo||p.observ)||'-')+((p.tipo&&p.observ&&p.observ!==p.tipo)?' — '+p.observ:'')+' — '+(p.compania||'-'),fecha:p.fVto,prima:p.prima,id:p.id,idCli:p.idCliente});
@@ -803,7 +806,8 @@ window.abrirCli=id=>{
   if(id){
     const c=C.find(x=>x.id===id); if(!c)return;
     document.getElementById('mo-cli-titulo').textContent='Editar cliente';
-    const m={cId:c.id,cNom:c.nombre,cDoc:c.documento,cCuit:c.cuit,cFN:c.fNac,cEmail:c.email,cCalle:c.calle,cNro:c.nro,cPiso:c.piso,cDpto:c.dpto,cLoc:c.localidad,cCp:c.cp,cT1:c.tel1,cT2:c.tel2,cT3:c.tel3,cCbu:c.cbu,cTj1:c.tarj1,cVt1:c.vtoT1,cTj2:c.tarj2,cVt2:c.vtoT2};
+    const toInputD=f=>{if(!f)return '';const m=String(f).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');return f;};
+    const m={cId:c.id,cNom:c.nombre,cDoc:c.documento,cCuit:c.cuit,cFN:toInputD(c.fNac),cEmail:c.email,cCalle:c.calle,cNro:c.nro,cPiso:c.piso,cDpto:c.dpto,cLoc:c.localidad,cCp:c.cp,cT1:c.tel1,cT2:c.tel2,cT3:c.tel3,cCbu:c.cbu,cTj1:c.tarj1,cVt1:c.vtoT1,cTj2:c.tarj2,cVt2:c.vtoT2};
     Object.entries(m).forEach(([k,v])=>sg(k,v));
   } else { document.getElementById('mo-cli-titulo').textContent='Nuevo cliente'; }
   abrir('mo-cli');
@@ -812,7 +816,8 @@ window.abrirCli=id=>{
 window.guardarCli=async()=>{
   const nom=gv('cNom').trim(); if(!nom){toast('El nombre es obligatorio','ro');return;}
   const id=gv('cId');
-  const d={nombre:nom,documento:gv('cDoc'),cuit:gv('cCuit'),fNac:gv('cFN'),email:gv('cEmail'),calle:gv('cCalle'),nro:gv('cNro'),piso:gv('cPiso'),dpto:gv('cDpto'),localidad:gv('cLoc'),cp:gv('cCp'),tel1:gv('cT1'),tel2:gv('cT2'),tel3:gv('cT3'),cbu:gv('cCbu'),tarj1:gv('cTj1'),vtoT1:gv('cVt1'),tarj2:gv('cTj2'),vtoT2:gv('cVt2'),actualizado:new Date().toLocaleDateString('es-AR')};
+  const fromInputD=f=>{if(!f)return '';const m=f.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(m)return m[3]+'/'+m[2]+'/'+m[1];return f;};
+  const d={nombre:nom,documento:gv('cDoc'),cuit:gv('cCuit'),fNac:fromInputD(gv('cFN')),email:gv('cEmail'),calle:gv('cCalle'),nro:gv('cNro'),piso:gv('cPiso'),dpto:gv('cDpto'),localidad:gv('cLoc'),cp:gv('cCp'),tel1:gv('cT1'),tel2:gv('cT2'),tel3:gv('cT3'),cbu:gv('cCbu'),tarj1:gv('cTj1'),vtoT1:gv('cVt1'),tarj2:gv('cTj2'),vtoT2:gv('cVt2'),actualizado:new Date().toLocaleDateString('es-AR')};
   try{
     if(id){
       const ref=doc(db,'clientes',id);
@@ -955,7 +960,13 @@ window.abrirPol=id=>{
   if(id){
     const p=P.find(x=>x.id===id); if(!p)return;
     document.getElementById('mo-pol-titulo').textContent='Editar póliza';
-    const m={pId:p.id,pNro:p.nroPoliza,pComp:p.compania,pSuma:p.sumaAse,pPrima:p.prima,pPremio:p.premio,pFIni:p.fInicio,pFVto:p.fVto,pObs:p.observ};
+    const toInput=f=>{
+      if(!f)return '';
+      const m=String(f).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+      return f;
+    };
+    const m={pId:p.id,pNro:p.nroPoliza,pComp:p.compania,pSuma:p.sumaAse,pPrima:p.prima,pPremio:p.premio,pFIni:toInput(p.fInicio),pFVto:toInput(p.fVto),pObs:p.observ};
     Object.entries(m).forEach(([k,v])=>sg(k,v));
     sel.value=p.idCliente;
     sg('pTipo',p.tipo||''); sg('pFrec',p.frecuencia||'Anual'); sg('pEst',p.estado||'Vigente'); sg('pCompSel',p.compania||''); sg('pComp',p.compania||'');
@@ -977,7 +988,13 @@ window.guardarPol=async()=>{
   const nro=gv('pNro'),idc=document.getElementById('pCli').value;
   if(!nro){toast('El número de póliza es obligatorio','ro');return;}
   const id=gv('pId');
-  const d={idCliente:idc,nroPoliza:nro,tipo:document.getElementById('pTipo').value,compania:(document.getElementById('pCompSel').value||gv('pComp')),sumaAse:gv('pSuma'),prima:gv('pPrima'),premio:gv('pPremio'),frecuencia:document.getElementById('pFrec').value,fInicio:gv('pFIni'),fVto:gv('pFVto'),estado:document.getElementById('pEst').value,observ:gv('pObs'),actualizado:new Date().toLocaleDateString('es-AR')};
+  const fromInput=f=>{
+    if(!f)return '';
+    const m=f.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(m)return m[3]+'/'+m[2]+'/'+m[1];
+    return f;
+  };
+  const d={idCliente:idc,nroPoliza:nro,tipo:document.getElementById('pTipo').value,compania:(document.getElementById('pCompSel').value||gv('pComp')),sumaAse:gv('pSuma'),prima:gv('pPrima'),premio:gv('pPremio'),frecuencia:document.getElementById('pFrec').value,fInicio:fromInput(gv('pFIni')),fVto:fromInput(gv('pFVto')),estado:document.getElementById('pEst').value,observ:gv('pObs'),actualizado:new Date().toLocaleDateString('es-AR')};
   try{
     if(id){await updateDoc(doc(db,'polizas',id),d);}
     else{d.creado=new Date().toLocaleDateString('es-AR');await addDoc(collection(db,'polizas'),d);}
@@ -1031,7 +1048,7 @@ window.confirmarRenovar=async()=>{
       premio:gv('rPremio'),
       frecuencia:gv('rFrec'),
       fInicio:p.fVto||'',
-      fVto: fVto.split('-').reverse().join('/'),
+      fVto: fVto.match(/^\d{4}-\d{2}-\d{2}$/) ? fVto.split('-').reverse().join('/') : fVto,
       estado:'Vigente',
       renovadaDe:id,
       creado:new Date().toLocaleDateString('es-AR')
