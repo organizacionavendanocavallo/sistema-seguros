@@ -317,11 +317,8 @@ td.nm{color:var(--txt);font-weight:600}
         <div class="panel-hd">
           <h3>Alertas de vencimiento</h3>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <label style="font-size:12px;color:var(--txt3)">Mostrar vencidas hasta:</label>
-            <input type="date" id="fil-fecha-al" class="si" style="padding:6px 10px;font-size:13px" onchange="calcAlertas()">
-            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fil-fecha-al').value='';calcAlertas()">✕ Limpiar</button>
             <button class="btn btn-ghost btn-sm" onclick="calcAlertas()">↻ Actualizar</button>
-            <button class="btn btn-danger btn-sm" onclick="pasarAVencidas()">→ Mover a Vencidas</button>
+            <button class="btn btn-danger btn-sm" onclick="archivarVencidas()">📁 Archivar vencidas</button>
           </div>
         </div>
         <div style="padding:16px 20px" id="lista-al"><div style="text-align:center;padding:40px;color:var(--txt3)">Cargando alertas...</div></div>
@@ -385,10 +382,10 @@ td.nm{color:var(--txt);font-weight:600}
         <div class="panel-hd">
           <h3>Pólizas vencidas <span id="sub-venc"></span></h3>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input class="si" id="q-venc" type="text" placeholder="Buscar cliente o póliza..." style="width:200px" oninput="renVenc()">
             <label style="font-size:12px;color:var(--txt3)">Vencidas antes de:</label>
             <input type="date" id="fil-fecha-venc" class="si" style="padding:6px 10px;font-size:13px" onchange="renVenc()">
-            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fil-fecha-venc').value='';renVenc()">✕ Limpiar</button>
-            <input class="si" id="q-venc" type="text" placeholder="Buscar cliente o póliza..." style="width:220px" oninput="renVenc()">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fil-fecha-venc').value='';renVenc()">✕ Limpiar filtro</button>
             <button class="btn btn-ghost btn-sm" onclick="exportarVencExcel()">⬇ Excel</button>
           </div>
         </div>
@@ -582,7 +579,7 @@ async function cargarDatos(){
     document.getElementById('cnt-pol').textContent='('+P.length+')';
     document.getElementById('sub-cli').textContent='— '+C.length+' registros';
     document.getElementById('sub-pol').textContent='— '+P.length+' registros';
-    renCli(); renPol(); calcAlertas(); renVenc();
+    renCli(); sortYRenPol(); calcAlertas(); renVenc();
   } catch(e){ toast('Error al cargar datos: '+e.message,'ro'); }
 }
 
@@ -839,17 +836,39 @@ window.elimCli=async(id,nom)=>{
 };
 
 // ── PÓLIZAS ───────────────────────────────────────────────────
+let sortPolCol='fVto', sortPolDir=1; // default: vencimiento asc
+
 window.filtrarPol=()=>{
   const q=document.getElementById('q-pol').value.toLowerCase().trim();
   const tipo=document.getElementById('fil-tipo').value;
   const est=document.getElementById('fil-estado').value;
   PF=P.filter(p=>{
     const nc=String(nCli(p.idCliente)||'').toLowerCase();
-    const mq=!q||[p.nroPoliza,p.compania,nc].some(v=>String(v||'').toLowerCase().includes(q));
-    return mq&&(!tipo||p.tipo===tipo)&&(!est||p.estado===est);
+    const mq=!q||[p.nroPoliza,p.compania,nc,(p.tipo||p.observ)].some(v=>String(v||'').toLowerCase().includes(q));
+    return mq&&(!tipo||(p.tipo||'').includes(tipo))&&(!est||p.estado===est);
   });
-  pP=1; renPol();
+  pP=1; sortYRenPol();
 };
+
+window.setSortPol=(col)=>{
+  if(sortPolCol===col) sortPolDir*=-1;
+  else { sortPolCol=col; sortPolDir=col==='fVto'?1:-1; }
+  pP=1; sortYRenPol();
+};
+
+function sortYRenPol(){
+  PF.sort((a,b)=>{
+    if(sortPolCol==='fVto'||sortPolCol==='fInicio'){
+      const va=pf(a[sortPolCol])||new Date(0);
+      const vb=pf(b[sortPolCol])||new Date(0);
+      return sortPolDir*(va-vb);
+    }
+    if(sortPolCol==='cliente'){ return sortPolDir*nCli(a.idCliente).localeCompare(nCli(b.idCliente),'es',{sensitivity:'base'}); }
+    if(sortPolCol==='prima'||sortPolCol==='premio'){ return sortPolDir*((+(a[sortPolCol]||0))-(+(b[sortPolCol]||0))); }
+    return sortPolDir*String(a[sortPolCol]||'').localeCompare(String(b[sortPolCol]||''),'es',{sensitivity:'base'});
+  });
+  renPol();
+}
 
 function renPol(){
   const ct=document.getElementById('body-pol');
@@ -857,6 +876,12 @@ function renPol(){
   document.getElementById('sub-pol').textContent=PF.length<P.length?`— ${PF.length} de ${P.length}`:`— ${P.length} registros`;
   if(!PF.length){ct.innerHTML='<div class="empty">Sin resultados.</div>';return;}
   const hoy=new Date(); hoy.setHours(0,0,0,0);
+
+  const mkSP=(col,label)=>{
+    const act=sortPolCol===col;
+    const arr=act?(sortPolDir===1?' ↑':' ↓'):'';
+    return `<th onclick="setSortPol('${col}')" style="cursor:pointer;user-select:none;white-space:nowrap">${label}${arr}</th>`;
+  };
 
   if(isMobile()){
     ct.innerHTML='<div style="padding:8px 12px">'+pg.map(p=>{
@@ -892,7 +917,7 @@ function renPol(){
         <td>${nCli(p.idCliente)}</td>
         <td>${(p.tipo||p.observ)||'-'}</td>
         <td>${p.compania||'-'}</td>
-        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.tipo&&p.observ&&p.observ!==p.tipo)?p.observ:''}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(p.tipo&&p.observ&&p.observ!==p.tipo)?p.observ:''}</td>
         <td>${p.prima?'$'+Number(p.prima).toLocaleString('es-AR'):'-'}</td>
         <td>${p.premio?'$'+Number(p.premio).toLocaleString('es-AR'):'-'}</td>
         <td><span style="${ev}">${p.fVto||'-'}</span></td>
@@ -905,8 +930,19 @@ function renPol(){
       </tr>`;
     }).join('');
     ct.innerHTML=`<div class="tw"><table>
-      <thead><tr><th>Nro.</th><th>Cliente</th><th>Tipo</th><th>Compañía</th><th>Detalle</th><th>Prima</th><th>Premio</th><th>Vencimiento</th><th>Estado</th><th>Acciones</th></tr></thead>
-      <tbody>${rows||'<tr class="empty"><td colspan="8">Sin resultados.</td></tr>'}</tbody>
+      <thead><tr>
+        ${mkSP('nroPoliza','Nro.')}
+        ${mkSP('cliente','Cliente')}
+        ${mkSP('tipo','Tipo')}
+        ${mkSP('compania','Compañía')}
+        <th>Detalle</th>
+        ${mkSP('prima','Prima')}
+        ${mkSP('premio','Premio')}
+        ${mkSP('fVto','Vencimiento')}
+        ${mkSP('estado','Estado')}
+        <th>Acciones</th>
+      </tr></thead>
+      <tbody>${rows||'<tr class="empty"><td colspan="10">Sin resultados.</td></tr>'}</tbody>
     </table></div>`+paginacion(pP,tp,'pP','renPol')+`<div style="padding:8px 20px 12px;font-size:12px;color:var(--txt3)">Mostrando ${ini+1}–${Math.min(ini+PP,PF.length)} de ${PF.length}</div>`;
   }
 }
@@ -1052,40 +1088,62 @@ window.toast=toast;
 let pC_venc = 1;
 const PP_venc = 25;
 
+let sortVencCol='fVto', sortVencDir=-1; // por defecto: vencimiento desc
+
 window.renVenc = () => {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const CORTE = new Date('2026-01-01T00:00:00');
   const filFecha = document.getElementById('fil-fecha-venc').value;
+  const corte = filFecha ? new Date(filFecha+'T00:00:00') : null;
   const q = (document.getElementById('q-venc').value||'').toLowerCase().trim();
-  const corte = filFecha ? new Date(filFecha+'T00:00:00') : hoy;
 
+  // Incluir: archivadas + vencidas antes del 1/1/2026 + vencidas antes del filtro
   let vencidas = P.filter(p => {
     if(p.estado==='Anulada') return false;
     const v = pf(p.fVto); if(!v) return false;
-    if(v >= corte) return false; // solo las que vencen ANTES del corte
+    const esVencida = v < hoy;
+    if(!esVencida) return false;
+    // Mostrar si: está archivada, O venció antes del 1/1/2026, O venció antes del filtro
+    const mostrar = p.archivada || v < CORTE || (corte && v < corte);
+    if(!mostrar) return false;
     if(q){
       const nc = String(nCli(p.idCliente)||'').toLowerCase();
-      if(!(p.nroPoliza||'').toLowerCase().includes(q) && !nc.includes(q) && !(p.compania||'').toLowerCase().includes(q)) return false;
+      if(!(p.nroPoliza||'').toLowerCase().includes(q) && !nc.includes(q) &&
+         !(p.compania||'').toLowerCase().includes(q) && !(p.tipo||p.observ||'').toLowerCase().includes(q)) return false;
     }
     return true;
   });
 
-  // Sort by fVto desc (más recientes primero)
+  // Ordenar
   vencidas.sort((a,b)=>{
-    const va=pf(a.fVto), vb=pf(b.fVto);
-    return vb-va;
+    let va, vb;
+    if(sortVencCol==='fVto'||sortVencCol==='fInicio'){
+      va=pf(a[sortVencCol])||new Date(0); vb=pf(b[sortVencCol])||new Date(0);
+      return sortVencDir*(vb-va);
+    }
+    if(sortVencCol==='cliente'){ va=nCli(a.idCliente); vb=nCli(b.idCliente); }
+    else if(sortVencCol==='prima'){ va=+(a.prima||0); vb=+(b.prima||0); return sortVencDir*(vb-va); }
+    else { va=String(a[sortVencCol]||''); vb=String(b[sortVencCol]||''); }
+    return sortVencDir*va.localeCompare(vb,'es',{sensitivity:'base'});
   });
 
+  // Badge
   const badge = document.getElementById('badge-venc');
   const totalVenc = P.filter(p=>{ const v=pf(p.fVto); return v&&v<hoy&&p.estado!=='Anulada'; }).length;
   if(totalVenc>0){badge.textContent=totalVenc;badge.style.display='inline';}else badge.style.display='none';
-
-  document.getElementById('sub-venc').textContent = '— '+vencidas.length+(filFecha?' hasta '+new Date(filFecha+'T00:00:00').toLocaleDateString('es-AR'):'');
+  document.getElementById('sub-venc').textContent = '— '+vencidas.length+' pólizas';
 
   const ct = document.getElementById('body-venc');
-  if(!vencidas.length){ct.innerHTML='<div class="empty">Sin pólizas vencidas para el filtro seleccionado.</div>';return;}
+  if(!vencidas.length){ct.innerHTML='<div class="empty">Sin pólizas vencidas.</div>';return;}
 
   const ini=(pC_venc-1)*PP_venc, pg=vencidas.slice(ini,ini+PP_venc), tp=Math.ceil(vencidas.length/PP_venc);
   const hoyRef=new Date(); hoyRef.setHours(0,0,0,0);
+
+  const mkSort = (col,label) => {
+    const active = sortVencCol===col;
+    const arrow = active ? (sortVencDir===-1?' ↓':' ↑') : '';
+    return `<th class="sort${active?' '+(sortVencDir===-1?'desc':'asc'):''}" onclick="setSortVenc('${col}')" style="cursor:pointer">${label}${arrow}</th>`;
+  };
 
   if(isMobile()){
     ct.innerHTML='<div style="padding:8px 12px">'+pg.map(p=>{
@@ -1093,12 +1151,13 @@ window.renVenc = () => {
       return `<div class="m-card">
         <div class="m-card-top">
           <div><div class="m-card-nom">Póliza ${p.nroPoliza||'-'}</div><div class="m-card-sub">${nCli(p.idCliente)}</div></div>
-          <span class="badge badge-ro">Venció hace ${ds} días</span>
+          <span class="badge badge-ro">Hace ${ds} días</span>
         </div>
         <div class="m-card-tags">
           <span class="m-card-tag">${(p.tipo||p.observ)||'-'}</span>
           <span class="m-card-tag">${p.compania||'-'}</span>
           <span class="m-card-tag" style="color:var(--danger)">Vto: ${p.fVto||'-'}</span>
+          ${p.archivada?'<span class="m-card-tag" style="color:var(--txt3)">Archivada</span>':''}
         </div>
         <div class="m-card-btns">
           <button class="m-card-btn" onclick="verFicha('${p.idCliente}')">Ver cliente</button>
@@ -1118,6 +1177,7 @@ window.renVenc = () => {
         <td style="color:var(--danger);font-weight:600">${p.fVto||'-'}</td>
         <td><span class="badge badge-ro">Hace ${ds} días</span></td>
         <td>${p.prima?'$'+Number(p.prima).toLocaleString('es-AR'):'-'}</td>
+        <td>${p.archivada?'<span class="badge badge-gr">Archivada</span>':''}</td>
         <td><div style="display:flex;gap:4px">
           <button class="btn btn-ghost btn-xs" onclick="verFicha('${p.idCliente}')">Ver</button>
           <button class="btn btn-success btn-xs" onclick="renovarPoliza('${p.id}')">Renovar</button>
@@ -1126,24 +1186,62 @@ window.renVenc = () => {
       </tr>`;
     }).join('');
     ct.innerHTML=`<div class="tw"><table>
-      <thead><tr><th>Nro.</th><th>Cliente</th><th>Tipo</th><th>Compañía</th><th>Venció</th><th>Hace</th><th>Prima</th><th>Acciones</th></tr></thead>
+      <thead><tr>
+        ${mkSort('nroPoliza','Nro.')}
+        ${mkSort('cliente','Cliente')}
+        ${mkSort('tipo','Tipo')}
+        ${mkSort('compania','Compañía')}
+        ${mkSort('fVto','Venció')}
+        <th>Hace</th>
+        ${mkSort('prima','Prima')}
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`+paginacion(pC_venc,tp,'pC_venc','renVenc')+
     `<div style="padding:8px 20px 12px;font-size:12px;color:var(--txt3)">Mostrando ${ini+1}–${Math.min(ini+PP_venc,vencidas.length)} de ${vencidas.length}</div>`;
   }
-
-  // Guardar para export
   window._vencidasFiltradas = vencidas;
 };
 
-// Botón "→ Mover a Vencidas" desde alertas
-window.pasarAVencidas = () => {
-  const filFecha = document.getElementById('fil-fecha-al').value;
-  ir('venc');
-  if(filFecha) {
-    document.getElementById('fil-fecha-venc').value = filFecha;
-  }
-  renVenc();
+window.setSortVenc = (col) => {
+  if(sortVencCol===col) sortVencDir*=-1;
+  else { sortVencCol=col; sortVencDir=-1; }
+  pC_venc=1; renVenc();
+};
+
+window.archivarVencidas = async () => {
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const paraArchivar = P.filter(p => {
+    if(p.archivada||p.estado==='Anulada'||p.estado==='Renovada') return false;
+    const v=pf(p.fVto); if(!v) return false;
+    return Math.round((v-hoy)/864e5) < 0; // todas las vencidas
+  });
+  if(!paraArchivar.length){toast('No hay pólizas vencidas para archivar','ro');return;}
+
+  const ok = confirm(
+    '⚠️ ARCHIVAR PÓLIZAS VENCIDAS\n\n'+
+    'Esta acción va a mover '+paraArchivar.length+' pólizas vencidas a la pestaña "Pólizas vencidas".\n\n'+
+    'Las pólizas archivadas:\n'+
+    '  • Dejan de aparecer en las alertas\n'+
+    '  • Se pueden ver en la pestaña "Pólizas vencidas"\n'+
+    '  • Se pueden renovar o anular desde ahí\n\n'+
+    '¿Confirmar?'
+  );
+  if(!ok) return;
+
+  toast('Archivando '+paraArchivar.length+' pólizas...','ok');
+  const BATCH_SIZE = 499;
+  try {
+    for(let i=0; i<paraArchivar.length; i+=BATCH_SIZE){
+      const chunk = paraArchivar.slice(i, i+BATCH_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach(p => batch.update(doc(db,'polizas',p.id),{archivada:true}));
+      await batch.commit();
+    }
+    toast('✅ '+paraArchivar.length+' pólizas archivadas','vd');
+    await cargarDatos();
+  } catch(e) { toast('Error: '+e.message,'ro'); }
 };
 
 window.exportarVencExcel = () => {
@@ -1394,6 +1492,7 @@ window.ejecutarImport = async () => {
       idCliente: idCli,
       codigoAsegurado: cod,
       nroPoliza: lim(p['NRO_POLIZa']),
+      frecuencia: 'Anual',
       compania: lim(p['COMPAÑIA']),
       tipo: lim(p['TIPO DE POLIZA']),
       observ: lim(p['OBJETO']),
