@@ -873,11 +873,18 @@ window.verFicha=id=>{
   if(pols.length){
     const hoy=new Date(); hoy.setHours(0,0,0,0);
     // Ordenar: vigentes primero, luego renovadas, luego vencidas/anuladas
-    const ordenEstado={Vigente:0,Renovada:1,Vencida:2,Anulada:3};
+    const hoySort=new Date(); hoySort.setHours(0,0,0,0);
+    const ordenPol=p=>{
+      if(p.estado==='Anulada') return 4;
+      if(p.estado==='Renovada') return 3;
+      const v=pf(p.fVto);
+      if(v && v<hoySort) return 2; // vencida por fecha aunque diga Vigente
+      return 0; // vigente real
+    };
     pols.sort((a,b)=>{
-      const oa=ordenEstado[a.estado]??2, ob=ordenEstado[b.estado]??2;
+      const oa=ordenPol(a), ob=ordenPol(b);
       if(oa!==ob) return oa-ob;
-      // Dentro de vigentes, ordenar por vencimiento asc
+      // Dentro del mismo grupo, ordenar por vencimiento asc
       const va=pf(a.fVto)||new Date(0), vb=pf(b.fVto)||new Date(0);
       return va-vb;
     });
