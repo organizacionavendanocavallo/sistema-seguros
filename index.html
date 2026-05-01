@@ -313,6 +313,23 @@ td.nm{color:var(--txt);font-weight:600}
         <div class="stat-card"><div class="stat-icon az">🔵</div><div><div class="stat-n az" id="s-ref-prox">0</div><div class="stat-l">Refact. en 10 días</div></div></div>
         <div class="stat-card"><div class="stat-icon vd">✅</div><div><div class="stat-n vd" id="s-ref-total">0</div><div class="stat-l">Total pólizas activas</div></div></div>
       </div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Totales cartera vigente</div>
+      <div class="stats-grid" style="margin-bottom:20px;grid-template-columns:1fr 1fr">
+        <div class="stat-card" style="border-left:4px solid var(--accent)">
+          <div class="stat-icon az">💰</div>
+          <div>
+            <div class="stat-n az" id="s-total-prima" style="font-size:20px">$0</div>
+            <div class="stat-l">Prima total (pólizas vigentes)</div>
+          </div>
+        </div>
+        <div class="stat-card" style="border-left:4px solid var(--gold)">
+          <div class="stat-icon" style="background:#fef9c3">🏆</div>
+          <div>
+            <div class="stat-n" id="s-total-premio" style="font-size:20px;color:var(--gold)">$0</div>
+            <div class="stat-l">Premio total (pólizas vigentes)</div>
+          </div>
+        </div>
+      </div>
       <!-- Panel actualizar -->
       <div style="display:flex;justify-content:flex-end;margin-bottom:12px;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="calcAlertas()">↻ Actualizar</button>
@@ -733,6 +750,19 @@ window.calcAlertas=()=>{
   const rHoy=ref.filter(r=>r.nivel==='hoy').length;
   const rProx=ref.filter(r=>r.nivel==='proxima').length;
   const rTotal=P.filter(p=>p.estado==='Vigente'&&!p.archivada).length;
+  // Totales cartera vigente (vigentes por fecha)
+  const hoyT=new Date(); hoyT.setHours(0,0,0,0);
+  const vigentes=P.filter(p=>{
+    if(p.estado==='Anulada'||p.estado==='Renovada'||p.archivada) return false;
+    const v=pf(p.fVto); return v && v>=hoyT;
+  });
+  const totalPrima=vigentes.reduce((s,p)=>s+(parseFloat(p.prima)||0),0);
+  const totalPremio=vigentes.reduce((s,p)=>s+(parseFloat(p.premio)||0),0);
+  const fmt=n=>n>=1000000?'$'+(n/1000000).toFixed(1)+'M':n>=1000?'$'+(n/1000).toFixed(0)+'K':'$'+n.toLocaleString('es-AR',{maximumFractionDigits:0});
+  document.getElementById('s-total-prima').textContent=fmt(totalPrima);
+  document.getElementById('s-total-premio').textContent=fmt(totalPremio);
+  document.getElementById('s-total-prima').title='$'+totalPrima.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('s-total-premio').title='$'+totalPremio.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
   document.getElementById('s-ref-venc').textContent=rVenc;
   document.getElementById('s-ref-hoy').textContent=rHoy;
   document.getElementById('s-ref-prox').textContent=rProx;
