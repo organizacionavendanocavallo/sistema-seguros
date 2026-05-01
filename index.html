@@ -314,8 +314,10 @@ td.nm{color:var(--txt);font-weight:600}
         <div class="stat-card"><div class="stat-icon vd">✅</div><div><div class="stat-n vd" id="s-ref-total">0</div><div class="stat-l">Total pólizas activas</div></div></div>
       </div>
       <!-- Panel actualizar -->
-      <div style="display:flex;justify-content:flex-end;margin-bottom:12px;gap:8px">
-        <button class="btn btn-ghost btn-sm" onclick="calcAlertas()">↻ Actualizar alertas</button>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="calcAlertas()">↻ Actualizar</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportarAlertasExcel()">⬇ Excel</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportarAlertasPDF()">⬇ PDF</button>
         <button class="btn btn-danger btn-sm" onclick="archivarVencidas()">📁 Archivar vencidas</button>
       </div>
 
@@ -654,6 +656,7 @@ window.calcAlertas=()=>{
   document.getElementById('s-prox').textContent=sp;
   document.getElementById('s-tarj').textContent=st;
   const tot=sv+su+al.filter(a=>a.nivel==='hoy').length+alTarj.filter(a=>a.nivel==='hoy'||a.nivel==='vencida'||a.nivel==='urgente').length;
+  _alertasData = al.slice(); // guardar para exportar
   const b=document.getElementById('badge-al');
   if(tot>0){b.textContent=tot;b.style.display='inline';}else b.style.display='none';
 
@@ -1186,6 +1189,75 @@ window.confirmarRenovar=async()=>{
 };
 
 // ── EXPORTAR EXCEL ────────────────────────────────────────────
+
+// ── EXPORTAR ALERTAS ──────────────────────────────────────────
+let _alertasData = []; // guardadas por calcAlertas para export
+
+window.exportarAlertasExcel = () => {
+  if(!_alertasData.length){ toast('Sin alertas para exportar','ro'); return; }
+  const data = _alertasData.map(a=>({
+    'Cliente': a.titulo,
+    'Detalle': a.sub,
+    'Vencimiento': a.fecha,
+    'Días': a.dias < 0 ? 'Venció hace '+Math.abs(a.dias)+' días' : a.dias === 0 ? 'Hoy' : 'En '+a.dias+' días',
+    'Nivel': a.nivel.toUpperCase(),
+    'Prima': a.prima ? '$'+Number(a.prima).toLocaleString('es-AR') : ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  // Ancho de columnas
+  ws['!cols'] = [{wch:30},{wch:50},{wch:14},{wch:22},{wch:10},{wch:14}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Alertas');
+  XLSX.writeFile(wb, 'alertas_vencimiento_'+new Date().toLocaleDateString('es-AR').replace(/\//g,'-')+'.xlsx');
+  toast('Excel descargado','vd');
+};
+
+window.exportarAlertasPDF = () => {
+  if(!_alertasData.length){ toast('Sin alertas para exportar','ro'); return; }
+  const hoy = new Date().toLocaleDateString('es-AR');
+  const colores = {vencida:'#fee2e2',hoy:'#fce8e6',urgente:'#fef3c7',proxima:'#dcfce7'};
+  const etqs = {vencida:'VENCIDA',hoy:'HOY',urgente:'URGENTE',proxima:'PRÓXIMA'};
+
+  const filas = _alertasData.map(a=>{
+    const dt = a.dias<0?'Venció hace '+Math.abs(a.dias)+' días':a.dias===0?'Hoy':'En '+a.dias+' días';
+    return `<tr style="background:${colores[a.nivel]}">
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-weight:600">${a.titulo}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:12px">${a.sub}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:600">${a.fecha}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:center;font-size:12px">${dt}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:center">
+        <span style="background:${a.nivel==='proxima'?'#16a34a':a.nivel==='urgente'?'#b45309':'#dc2626'};color:white;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">${etqs[a.nivel]}</span>
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;text-align:right">${a.prima?'$'+Number(a.prima).toLocaleString('es-AR'):''}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Alertas de Vencimiento</title>
+  <style>
+    body{font-family:Arial,sans-serif;margin:24px;color:#1e293b}
+    h1{font-size:20px;color:#0f2d5e;margin-bottom:4px}
+    .sub{font-size:13px;color:#64748b;margin-bottom:20px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead th{background:#0f2d5e;color:white;padding:10px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+    @media print{body{margin:12px}.no-print{display:none}}
+  </style></head><body>
+  <h1>🛡️ Gestión de Seguros — Alertas de Vencimiento</h1>
+  <div class="sub">Generado el ${hoy} &nbsp;|&nbsp; ${_alertasData.length} pólizas requieren atención</div>
+  <table>
+    <thead><tr><th>Cliente</th><th>Póliza / Detalle</th><th>Vencimiento</th><th>Días</th><th>Estado</th><th>Prima</th></tr></thead>
+    <tbody>${filas}</tbody>
+  </table>
+  <div class="no-print" style="margin-top:20px">
+    <button onclick="window.print()" style="padding:10px 20px;background:#0f2d5e;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer">🖨️ Imprimir / Guardar PDF</button>
+  </div>
+  </body></html>`;
+
+  const win = window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>win.print(), 500);
+};
 window.exportarCliExcel=()=>{
   const data=CF.map(c=>({Nombre:c.nombre,Documento:c.documento,CUIT:c.cuit,'F.Nacimiento':c.fNac,Calle:c.calle,Nro:c.nro,Piso:c.piso,Dpto:c.dpto,Localidad:c.localidad,CP:c.cp,'Tel 1':c.tel1,'Tel 2':c.tel2,'Tel 3':c.tel3,Email:c.email,CBU:c.cbu,'Tarjeta 1':c.tarj1,'Vto T1':c.vtoT1,'Tarjeta 2':c.tarj2,'Vto T2':c.vtoT2}));
   const ws=XLSX.utils.json_to_sheet(data);
