@@ -594,7 +594,7 @@ td.nm{color:var(--txt);font-weight:600}
 <script type="module">
 import { initializeApp }           from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const FB = {
   apiKey:"AIzaSyCYwmG-KhLw7aAAceA4xYY1qhDIG08Rd9o",
@@ -614,31 +614,13 @@ const PP=25;
 let isMobile=()=>window.innerWidth<768;
 
 // ── AUTH ─────────────────────────────────────────────────────
-onAuthStateChanged(auth, async u=>{
+onAuthStateChanged(auth, u=>{
   if(u){
     document.getElementById('login-screen').style.display='none';
     const app=document.getElementById('app');
     app.style.display='flex'; app.style.flexDirection='column';
     document.getElementById('tu').textContent=u.email;
-    // Detectar si es admin: primer usuario registrado o email guardado en Firebase
-    await cargarPermisos();
-    // Admin = tiene acceso a configuración (guardado en doc admins/list)
-    try {
-      const adminSnap = await getDocs(collection(db,'admins'));
-      let adminEmails = [];
-      adminSnap.forEach(d=>{ if(d.data().emails) adminEmails=d.data().emails; });
-      // Si no hay admins configurados, el primero que entre es admin
-      if(!adminEmails.length) {
-        esAdmin = true;
-        // Guardar como admin
-        await setDoc(doc(db,'admins','list'),{emails:[u.email]});
-      } else {
-        esAdmin = adminEmails.includes(u.email);
-      }
-    } catch(e) { esAdmin = true; }
     cargarDatos();
-    aplicarPermisos();
-    if(esAdmin) cargarCheckboxPermisos();
   } else {
     document.getElementById('login-screen').style.display='flex';
     document.getElementById('app').style.display='none';
@@ -893,8 +875,9 @@ function renCli(){
   if(!CF.length){ct.innerHTML='<div class="empty">Sin resultados para la búsqueda.</div>';return;}
 
   if(isMobile()){
-    ct.innerHTML='<div style="padding:8px 12px">'+pg.map(c=>`
-      <div class="m-card" onclick="verFicha('${c.id}')">
+    ct.innerHTML='<div style="padding:8px 12px">'+pg.map(c=>{
+      const nom=String(c.nombre||'').replace(/'/g,'').replace(/"/g,'');
+      return `<div class="m-card" onclick="verFicha('${c.id}')">
         <div class="m-card-top">
           <div>
             <div class="m-card-nom">${c.nombre||'-'}</div>
@@ -909,9 +892,10 @@ function renCli(){
         <div class="m-card-btns" onclick="event.stopPropagation()">
           <button class="m-card-btn" onclick="verFicha('${c.id}')">Ver ficha</button>
           <button class="m-card-btn" onclick="abrirCli('${c.id}')">Editar</button>
-          <button class="m-card-btn danger" onclick="elimCli('${c.id}','${String(c.nombre||'').replace(/'/g,'')}')">Dar de baja</button>
+          <button class="m-card-btn danger" onclick="elimCli('${c.id}','${nom}')">Dar de baja</button>
         </div>
-      </div>`).join('')+'</div>'+paginacion(pC,tp,'pC','renCli')+`<div style="padding:4px 12px 12px;font-size:12px;color:var(--txt3)">Mostrando ${ini+1}–${Math.min(ini+PP,CF.length)} de ${CF.length}</div>`;
+      </div>`;
+    }).join('')+'</div>'+paginacion(pC,tp,'pC','renCli')+`<div style="padding:4px 12px 12px;font-size:12px;color:var(--txt3)">Mostrando ${ini+1}–${Math.min(ini+PP,CF.length)} de ${CF.length}</div>`;
   } else {
     const rows=pg.map(c=>`<tr onclick="verFicha('${c.id}')">
       <td class="nm">${c.nombre||'-'}</td>
@@ -922,7 +906,7 @@ function renCli(){
       <td>${polsDeCliente(c.id).length?`<span class="badge badge-az">${polsDeCliente(c.id).length} póliza${polsDeCliente(c.id).length>1?'s':''}</span>`:'-'}</td>
       <td onclick="event.stopPropagation()"><div style="display:flex;gap:4px">
         <button class="btn btn-ghost btn-xs" onclick="abrirCli('${c.id}')">Editar</button>
-        <button class="btn btn-danger btn-xs" onclick="elimCli('${c.id}','${String(c.nombre||'').replace(/'/g,'')}')">Baja</button>
+        <button class="btn btn-danger btn-xs" onclick="elimCli('${c.id}','${nom}')">Baja</button>
       </div></td>
     </tr>`).join('');
     ct.innerHTML=`<div class="tw"><table>
@@ -1432,95 +1416,6 @@ window.abrirTarjetasPanel=()=>{
   setTimeout(()=>panel.scrollIntoView({behavior:'smooth', block:'start'}), 100);
 };
 
-// ── PERMISOS ──────────────────────────────────────────────────
-const ADMIN_EMAIL = null; // se setea al login
-let esAdmin = false;
-let PERMS = {};
-
-const PERM_IDS = ['p-dashboard','p-clientes','p-polizas','p-vencidas','p-config',
-  'p-ver-totales','p-add-cli','p-edit-cli','p-del-cli',
-  'p-add-pol','p-edit-pol','p-del-pol','p-renov-pol','p-arch-pol','p-import','p-export'];
-
-const PERM_DEFAULTS = {
-  'p-dashboard':true,'p-clientes':true,'p-polizas':true,'p-vencidas':true,'p-config':false,
-  'p-ver-totales':false,'p-add-cli':true,'p-edit-cli':true,'p-del-cli':false,
-  'p-add-pol':true,'p-edit-pol':true,'p-del-pol':false,'p-renov-pol':true,
-  'p-arch-pol':false,'p-import':false,'p-export':true
-};
-
-async function cargarPermisos() {
-  try {
-    const snap = await getDocs(collection(db,'permisos'));
-    PERMS = {...PERM_DEFAULTS};
-    snap.forEach(d=>{ if(d.id==='secretaria') PERMS={...PERM_DEFAULTS,...d.data()}; });
-  } catch(e) { PERMS = {...PERM_DEFAULTS}; }
-}
-
-function aplicarPermisos() {
-  if(esAdmin) return; // admin ve todo
-
-  // Pestañas
-  if(!PERMS['p-dashboard']) document.getElementById('ni-dash').style.display='none';
-  if(!PERMS['p-clientes'])  document.getElementById('ni-cli').style.display='none';
-  if(!PERMS['p-polizas'])   document.getElementById('ni-pol').style.display='none';
-  if(!PERMS['p-vencidas'])  document.getElementById('ni-venc').style.display='none';
-  document.getElementById('ni-cfg').style.display='none'; // secretaria nunca ve config
-
-  // Totales en dashboard
-  if(!PERMS['p-ver-totales']) {
-    const tp = document.getElementById('s-total-prima');
-    const tpr = document.getElementById('s-total-premio');
-    const tr = document.getElementById('s-ref-total');
-    if(tp) tp.closest('.stat-card').style.display='none';
-    if(tpr) tpr.closest('.stat-card').style.display='none';
-    if(tr) tr.closest('.stat-card').style.display='none';
-  }
-
-  // Botones clientes
-  if(!PERMS['p-add-cli'])  document.querySelectorAll('[onclick="abrirCli(null)"]').forEach(b=>b.style.display='none');
-  if(!PERMS['p-import'])   document.querySelectorAll('[onclick="abrir('mo-import')"]').forEach(b=>b.style.display='none');
-  if(!PERMS['p-export'])   document.querySelectorAll('[onclick="exportarCliExcel()"]').forEach(b=>b.style.display='none');
-
-  // Botones pólizas
-  if(!PERMS['p-add-pol'])  document.querySelectorAll('[onclick="abrirPol(null)"]').forEach(b=>b.style.display='none');
-  if(!PERMS['p-export'])   document.querySelectorAll('[onclick="exportarPolExcel()"]').forEach(b=>b.style.display='none');
-
-  // Archivar vencidas
-  if(!PERMS['p-arch-pol']) document.querySelectorAll('[onclick="archivarVencidas()"]').forEach(b=>b.style.display='none');
-
-  // Export alertas
-  if(!PERMS['p-export']) {
-    document.querySelectorAll('[onclick="exportarAlertasExcel()"]').forEach(b=>b.style.display='none');
-    document.querySelectorAll('[onclick="exportarAlertasPDF()"]').forEach(b=>b.style.display='none');
-    document.querySelectorAll('[onclick="exportarVencExcel()"]').forEach(b=>b.style.display='none');
-  }
-
-  // Guardar en renCli/renPol para ocultar botones en tabla también
-  window._perms = PERMS;
-}
-
-window.guardarPermisos = async () => {
-  const data = {};
-  PERM_IDS.forEach(id=>{ const el=document.getElementById(id); if(el) data[id]=el.checked; });
-  try {
-    const snap = await getDocs(collection(db,'permisos'));
-    let docId = null;
-    snap.forEach(d=>{ if(d.id==='secretaria') docId=d.id; });
-    if(docId) { await updateDoc(doc(db,'permisos','secretaria'),data); }
-    else { await addDoc(collection(db,'permisos'),{...data, _id:'secretaria'}); }
-    // Usar set con ID fijo
-    await setDoc(doc(db,'permisos','secretaria'), data);
-    toast('Permisos guardados','vd');
-  } catch(e) { toast('Error: '+e.message,'ro'); }
-};
-
-function cargarCheckboxPermisos() {
-  if(!esAdmin) return;
-  PERM_IDS.forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.checked = PERMS[id] ?? PERM_DEFAULTS[id] ?? false;
-  });
-}
 window.toast=toast;
 
 
@@ -1741,14 +1636,16 @@ function renderCfg() {
   const lt = document.getElementById('lista-tipos');
   const lc = document.getElementById('lista-companias');
   if(!lt||!lc) return;
-  const mkItem = (item, coleccion) =>
-    `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px;border-bottom:1px solid var(--border)">
+  const mkItem = (item, coleccion) => {
+    const nom = item.nombre.replace(/'/g,'').replace(/"/g,'');
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px;border-bottom:1px solid var(--border)">
       <span style="font-size:14px">${item.nombre}</span>
       <div style="display:flex;gap:6px">
-        <button class="btn btn-ghost btn-xs" onclick="editarCfgItem('${coleccion}','${item.id}','${item.nombre.replace(/'/g,"\'")}')">Editar</button>
-        <button class="btn btn-danger btn-xs" onclick="eliminarCfgItem('${coleccion}','${item.id}','${item.nombre.replace(/'/g,"\'")}')">Eliminar</button>
+        <button class="btn btn-ghost btn-xs" onclick="editarCfgItem('${coleccion}','${item.id}','${nom}')">Editar</button>
+        <button class="btn btn-danger btn-xs" onclick="eliminarCfgItem('${coleccion}','${item.id}','${nom}')">Eliminar</button>
       </div>
     </div>`;
+  };
   lt.innerHTML = TIPOS.map(t=>mkItem(t,'tipos_poliza')).join('') || '<div style="padding:20px;color:var(--txt3);text-align:center">Sin tipos cargados</div>';
   lc.innerHTML = COMPANIAS.map(c=>mkItem(c,'companias')).join('') || '<div style="padding:20px;color:var(--txt3);text-align:center">Sin compañías cargadas</div>';
 }
