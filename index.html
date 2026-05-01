@@ -739,9 +739,9 @@ window.calcAlertas=()=>{
   } else {
     if(cntAl) cntAl.textContent='('+al.length+')';
     l.innerHTML=al.map(a=>mkAlItem(a,'📋',
-      '<button class="btn btn-ghost btn-xs" onclick="verFicha(''+a.idCli+'')">Ver cliente</button>'
-      +'<button class="btn btn-primary btn-xs" onclick="abrirPol(''+a.id+'')">Editar</button>'
-      +'<button class="btn btn-success btn-xs" onclick="renovarPoliza(''+a.id+'')">Renovar</button>'
+      `<button class="btn btn-ghost btn-xs" onclick="verFicha('${a.idCli}')">Ver cliente</button>`
+      +`<button class="btn btn-primary btn-xs" onclick="abrirPol('${a.id}')">Editar</button>`
+      +`<button class="btn btn-success btn-xs" onclick="renovarPoliza('${a.id}')">Renovar</button>`
     )).join('');
   }
 
@@ -754,8 +754,8 @@ window.calcAlertas=()=>{
   } else {
     if(cntTarj) cntTarj.textContent='('+alTarj.length+')';
     lt.innerHTML=alTarj.map(a=>mkAlItem(a,'💳',
-      '<button class="btn btn-ghost btn-xs" onclick="verFicha(''+a.idCli+'')">Ver cliente</button>'
-      +'<button class="btn btn-primary btn-xs" onclick="abrirCli(''+a.id+'')">Editar cliente</button>'
+      `<button class="btn btn-ghost btn-xs" onclick="verFicha('${a.idCli}')">Ver cliente</button>`
+      +`<button class="btn btn-primary btn-xs" onclick="abrirCli('${a.id}')">Editar cliente</button>`
     )).join('');
   }
 
@@ -827,8 +827,8 @@ window.calcAlertas=()=>{
           +(r.premio?'Premio: <strong>$'+Number(r.premio).toLocaleString('es-AR')+'</strong>':'')
           +'</div>':'')
         +'<div class="al-btns">'
-        +'<button class="btn btn-ghost btn-xs" onclick="verFicha(''+r.idCli+'')">Ver cliente</button>'
-        +'<button class="btn btn-primary btn-xs" onclick="abrirPol(''+r.id+'')">Ver póliza</button>'
+        +`<button class="btn btn-ghost btn-xs" onclick="verFicha('${r.idCli}')">Ver cliente</button>`
+        +`<button class="btn btn-primary btn-xs" onclick="abrirPol('${r.id}')">Ver póliza</button>`
         +'</div></div>'
         +'<div class="al-right"><div class="al-fecha">'+r.fecha+'</div><div class="al-dias">'+dt+'</div>'
         +'<span class="badge '+colsR[r.nivel]+'" style="margin-top:6px">'+etqsR[r.nivel]+'</span></div></div>';
