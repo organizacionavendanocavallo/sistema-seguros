@@ -70,7 +70,7 @@ body{font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--
 
 /* ── STATS BAR ── */
 .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px}
-.stat-card{background:white;border-radius:var(--r2);padding:18px 20px;border:1px solid var(--border);box-shadow:var(--shadow);display:flex;align-items:center;gap:14px}
+.stat-card{background:white;border-radius:var(--r2);padding:18px 20px;border:1px solid var(--border);box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;transition:box-shadow .15s,transform .1s}.stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
 .stat-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
 .stat-icon.ro{background:var(--danger-bg)}
 .stat-icon.na{background:var(--warn-bg)}
@@ -301,10 +301,10 @@ td.nm{color:var(--txt);font-weight:600}
     <div class="tab on" id="tab-dash">
       <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Vencimientos de pólizas y tarjetas</div>
       <div class="stats-grid" style="margin-bottom:20px">
-        <div class="stat-card"><div class="stat-icon ro">🚨</div><div><div class="stat-n ro" id="s-venc">0</div><div class="stat-l">Pólizas vencidas</div></div></div>
-        <div class="stat-card"><div class="stat-icon na">⚠️</div><div><div class="stat-n na" id="s-urg">0</div><div class="stat-l">Vencen en 15 días</div></div></div>
-        <div class="stat-card"><div class="stat-icon vd">📋</div><div><div class="stat-n vd" id="s-prox">0</div><div class="stat-l">Vencen en 30 días</div></div></div>
-        <div class="stat-card"><div class="stat-icon az">💳</div><div><div class="stat-n az" id="s-tarj">0</div><div class="stat-l">Tarjetas por vencer</div></div></div>
+        <div class="stat-card" onclick="irAVencidas()" style="cursor:pointer" title="Ver pólizas vencidas"><div class="stat-icon ro">🚨</div><div><div class="stat-n ro" id="s-venc">0</div><div class="stat-l">Pólizas vencidas</div></div></div>
+        <div class="stat-card" onclick="irAAlertasFiltradas('urgente')" style="cursor:pointer" title="Ver pólizas urgentes"><div class="stat-icon na">⚠️</div><div><div class="stat-n na" id="s-urg">0</div><div class="stat-l">Vencen en 15 días</div></div></div>
+        <div class="stat-card" onclick="irAAlertasFiltradas('proxima')" style="cursor:pointer" title="Ver pólizas próximas"><div class="stat-icon vd">📋</div><div><div class="stat-n vd" id="s-prox">0</div><div class="stat-l">Vencen en 30 días</div></div></div>
+        <div class="stat-card" onclick="abrirTarjetasPanel()" style="cursor:pointer" title="Ver tarjetas por vencer"><div class="stat-icon az">💳</div><div><div class="stat-n az" id="s-tarj">0</div><div class="stat-l">Tarjetas por vencer</div></div></div>
       </div>
       <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Refacturaciones próximas</div>
       <div class="stats-grid" style="margin-bottom:20px">
@@ -889,7 +889,7 @@ window.verFicha=id=>{
         else if(ds===0)badge='<span class="badge badge-ro">HOY</span>';
         else if(ds<=15)badge='<span class="badge badge-na">'+ds+' días</span>';
         else if(ds<=30)badge='<span class="badge badge-vd">'+ds+' días</span>';
-        else badge='<span class="badge badge-gr">Vigente</span>';
+        else badge='<span class="badge badge-vd">Vigente</span>';
       }
       h+=`<div class="ficha-pol">
         <div>
@@ -1139,6 +1139,7 @@ window.renovarPoliza=id=>{
   document.getElementById('rNro').value='';
   document.getElementById('rPrima').value=p.prima||'';
   document.getElementById('rPremio').value=p.premio||'';
+  document.getElementById('rSuma').value=p.sumaAse||'';
   document.getElementById('rFrec').value=p.frecuencia||'Anual';
   document.getElementById('rInfo').innerHTML=
     '<strong>Póliza actual:</strong> '+(p.nroPoliza||'-')+' &nbsp;|&nbsp; '+
@@ -1161,7 +1162,7 @@ window.confirmarRenovar=async()=>{
       nroPoliza:nro,
       compania:p.compania||'',
       observ:p.observ||'',
-      sumaAse:p.sumaAse||'',
+      sumaAse:gv('rSuma'),
       prima:gv('rPrima'),
       premio:gv('rPremio'),
       frecuencia:gv('rFrec'),
@@ -1224,6 +1225,45 @@ window.togglePanel=(bodyId, icoId)=>{
   const open=body.style.display==='none'||body.style.display==='';
   body.style.display=open?'block':'none';
   ico.style.transform=open?'rotate(90deg)':'rotate(0deg)';
+};
+
+// ── NAVEGACIÓN DESDE STATS ────────────────────────────────────
+window.irAVencidas=()=>{
+  ir('venc');
+  document.getElementById('fil-fecha-venc').value='';
+  renVenc();
+};
+
+window.irAAlertasFiltradas=(nivel)=>{
+  // Abrir panel de alertas de vencimiento y hacer scroll
+  ir('dash');
+  const panel = document.getElementById('lista-al');
+  const ico = document.getElementById('ico-al');
+  if(panel.style.display==='none'||!panel.style.display){
+    panel.style.display='block';
+    if(ico) ico.style.transform='rotate(90deg)';
+  }
+  // Filtrar alertas visualmente resaltando el nivel
+  setTimeout(()=>{
+    const items = panel.querySelectorAll('.al-item');
+    items.forEach(item=>{
+      item.style.opacity = item.classList.contains(nivel) ? '1' : '0.3';
+    });
+    panel.scrollIntoView({behavior:'smooth', block:'start'});
+    // Restaurar después de 3 segundos
+    setTimeout(()=>items.forEach(item=>item.style.opacity='1'), 3000);
+  }, 100);
+};
+
+window.abrirTarjetasPanel=()=>{
+  ir('dash');
+  const panel = document.getElementById('lista-tarj');
+  const ico = document.getElementById('ico-tarj');
+  if(panel.style.display==='none'||!panel.style.display){
+    panel.style.display='block';
+    if(ico) ico.style.transform='rotate(90deg)';
+  }
+  setTimeout(()=>panel.scrollIntoView({behavior:'smooth', block:'start'}), 100);
 };
 window.toast=toast;
 
@@ -1527,8 +1567,8 @@ const fmtF = v => {
   // Número serial de Excel (días desde 1/1/1900)
   if(typeof v === 'number') {
     if(v === 0) return '';
-    // Excel serial date: días desde 1/1/1900, ajustar bug de 1900
-    const d = new Date(Date.UTC(1900,0,1) + (v - 2) * 864e5);
+    // Excel serial date + 1 día para corregir offset de migración
+    const d = new Date(Date.UTC(1900,0,1) + (v - 2) * 864e5 + 864e5);
     if(!isNaN(d) && d.getFullYear()>1900 && d.getFullYear()<2100)
       return d.toLocaleDateString('es-AR');
     return '';
@@ -1536,9 +1576,12 @@ const fmtF = v => {
   const s = String(v).trim();
   if(!s || s==='NaN' || s==='NaT') return '';
   try {
+    // Sumar 1 día para corregir offset de migración
     const d = new Date(s);
-    if(!isNaN(d) && d.getFullYear()>1900 && d.getFullYear()<2100)
+    if(!isNaN(d) && d.getFullYear()>1900 && d.getFullYear()<2100){
+      d.setDate(d.getDate()+1);
       return d.toLocaleDateString('es-AR');
+    }
   } catch(e){}
   return s;
 };
@@ -1706,6 +1749,7 @@ document.querySelectorAll('.ov').forEach(m=>m.addEventListener('click',e=>{if(e.
         <div><label>Nuevo número de póliza *</label><input id="rNro" type="text" placeholder="Ej: 123456-8"></div>
         <div><label>Nueva prima ($)</label><input id="rPrima" type="number" placeholder="0"></div>
         <div><label>Nuevo premio ($)</label><input id="rPremio" type="number" placeholder="0"></div>
+        <div><label>Suma asegurada ($)</label><input id="rSuma" type="number" placeholder="0"></div>
         <div class="ff"><label>Frecuencia de refacturación</label>
           <select id="rFrec">
             <option value="Anual">Anual</option>
