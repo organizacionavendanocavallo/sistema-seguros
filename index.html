@@ -897,7 +897,9 @@ function renCli(){
       </div>`;
     }).join('')+'</div>'+paginacion(pC,tp,'pC','renCli')+`<div style="padding:4px 12px 12px;font-size:12px;color:var(--txt3)">Mostrando ${ini+1}–${Math.min(ini+PP,CF.length)} de ${CF.length}</div>`;
   } else {
-    const rows=pg.map(c=>`<tr onclick="verFicha('${c.id}')">
+    const rows=pg.map(c=>{
+      const nom=String(c.nombre||'').replace(/'/g,'').replace(/"/g,'');
+      return `<tr onclick="verFicha('${c.id}')">
       <td class="nm">${c.nombre||'-'}</td>
       <td>${c.documento||'-'}</td>
       <td>${c.localidad||'-'}</td>
@@ -908,7 +910,8 @@ function renCli(){
         <button class="btn btn-ghost btn-xs" onclick="abrirCli('${c.id}')">Editar</button>
         <button class="btn btn-danger btn-xs" onclick="elimCli('${c.id}','${nom}')">Baja</button>
       </div></td>
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
     ct.innerHTML=`<div class="tw"><table>
       <thead><tr><th>Nombre</th><th>Documento</th><th>Localidad</th><th>Teléfono</th><th>Email</th><th>Pólizas</th><th>Acciones</th></tr></thead>
       <tbody>${rows||'<tr class="empty"><td colspan="7">Sin resultados.</td></tr>'}</tbody>
