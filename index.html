@@ -71,6 +71,9 @@ body{font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--
 /* ── STATS BAR ── */
 .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px}
 .stat-card{background:white;border-radius:var(--r2);padding:18px 20px;border:1px solid var(--border);box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;transition:box-shadow .15s,transform .1s}.stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.perm-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer;color:var(--txt2)}
+.perm-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--accent)}
+.perm-row:hover{color:var(--accent)}
 .stat-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
 .stat-icon.ro{background:var(--danger-bg)}
 .stat-icon.na{background:var(--warn-bg)}
@@ -456,6 +459,42 @@ td.nm{color:var(--txt);font-weight:600}
           </div>
           <div id="lista-companias" style="padding:8px 0"></div>
         </div>
+        <!-- Permisos secretaria -->
+        <div class="panel" style="grid-column:1/-1">
+          <div class="panel-hd">
+            <h3>🔐 Permisos de la secretaria</h3>
+            <button class="btn btn-primary btn-sm" onclick="guardarPermisos()">💾 Guardar permisos</button>
+          </div>
+          <div style="padding:20px">
+            <p style="font-size:13px;color:var(--txt3);margin-bottom:16px">Configurá qué puede ver y hacer el usuario secretaria cuando ingresa al sistema.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+              <div>
+                <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt3);padding:8px 0;margin-bottom:8px;border-bottom:1px solid var(--border)">Pestañas visibles</div>
+                <label class="perm-row"><input type="checkbox" id="p-dashboard" checked> Dashboard</label>
+                <label class="perm-row"><input type="checkbox" id="p-clientes" checked> Clientes</label>
+                <label class="perm-row"><input type="checkbox" id="p-polizas" checked> Pólizas</label>
+                <label class="perm-row"><input type="checkbox" id="p-vencidas" checked> Pólizas vencidas</label>
+                <label class="perm-row"><input type="checkbox" id="p-config"> Configuración</label>
+                <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt3);padding:16px 0 8px;margin-top:8px;border-bottom:1px solid var(--border)">Dashboard</div>
+                <label class="perm-row"><input type="checkbox" id="p-ver-totales"> Ver prima, premio y total pólizas</label>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt3);padding:8px 0;margin-bottom:8px;border-bottom:1px solid var(--border)">Acciones en clientes</div>
+                <label class="perm-row"><input type="checkbox" id="p-add-cli" checked> Agregar clientes</label>
+                <label class="perm-row"><input type="checkbox" id="p-edit-cli" checked> Editar clientes</label>
+                <label class="perm-row"><input type="checkbox" id="p-del-cli"> Eliminar clientes</label>
+                <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt3);padding:16px 0 8px;margin-top:8px;border-bottom:1px solid var(--border)">Acciones en pólizas</div>
+                <label class="perm-row"><input type="checkbox" id="p-add-pol" checked> Agregar pólizas</label>
+                <label class="perm-row"><input type="checkbox" id="p-edit-pol" checked> Editar pólizas</label>
+                <label class="perm-row"><input type="checkbox" id="p-del-pol"> Eliminar / Anular pólizas</label>
+                <label class="perm-row"><input type="checkbox" id="p-renov-pol" checked> Renovar pólizas</label>
+                <label class="perm-row"><input type="checkbox" id="p-arch-pol"> Archivar vencidas</label>
+                <label class="perm-row"><input type="checkbox" id="p-import"> Importar Excel</label>
+                <label class="perm-row"><input type="checkbox" id="p-export" checked> Exportar Excel / PDF</label>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -555,7 +594,7 @@ td.nm{color:var(--txt);font-weight:600}
 <script type="module">
 import { initializeApp }           from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const FB = {
   apiKey:"AIzaSyCYwmG-KhLw7aAAceA4xYY1qhDIG08Rd9o",
@@ -575,13 +614,31 @@ const PP=25;
 let isMobile=()=>window.innerWidth<768;
 
 // ── AUTH ─────────────────────────────────────────────────────
-onAuthStateChanged(auth, u=>{
+onAuthStateChanged(auth, async u=>{
   if(u){
     document.getElementById('login-screen').style.display='none';
     const app=document.getElementById('app');
     app.style.display='flex'; app.style.flexDirection='column';
     document.getElementById('tu').textContent=u.email;
+    // Detectar si es admin: primer usuario registrado o email guardado en Firebase
+    await cargarPermisos();
+    // Admin = tiene acceso a configuración (guardado en doc admins/list)
+    try {
+      const adminSnap = await getDocs(collection(db,'admins'));
+      let adminEmails = [];
+      adminSnap.forEach(d=>{ if(d.data().emails) adminEmails=d.data().emails; });
+      // Si no hay admins configurados, el primero que entre es admin
+      if(!adminEmails.length) {
+        esAdmin = true;
+        // Guardar como admin
+        await setDoc(doc(db,'admins','list'),{emails:[u.email]});
+      } else {
+        esAdmin = adminEmails.includes(u.email);
+      }
+    } catch(e) { esAdmin = true; }
     cargarDatos();
+    aplicarPermisos();
+    if(esAdmin) cargarCheckboxPermisos();
   } else {
     document.getElementById('login-screen').style.display='flex';
     document.getElementById('app').style.display='none';
@@ -700,9 +757,9 @@ window.calcAlertas=()=>{
   } else {
     if(cntAl) cntAl.textContent='('+al.length+')';
     l.innerHTML=al.map(a=>mkAlItem(a,'📋',
-      '<button class="btn btn-ghost btn-xs" onclick="verFicha(\'' +a.idCli+ '\')">Ver cliente</button>'
-      +'<button class="btn btn-primary btn-xs" onclick="abrirPol(\'' +a.id+ '\')">Editar</button>'
-      +'<button class="btn btn-success btn-xs" onclick="renovarPoliza(\'' +a.id+ '\')">Renovar</button>'
+      '<button class="btn btn-ghost btn-xs" onclick="verFicha(''+a.idCli+'')">Ver cliente</button>'
+      +'<button class="btn btn-primary btn-xs" onclick="abrirPol(''+a.id+'')">Editar</button>'
+      +'<button class="btn btn-success btn-xs" onclick="renovarPoliza(''+a.id+'')">Renovar</button>'
     )).join('');
   }
 
@@ -715,8 +772,8 @@ window.calcAlertas=()=>{
   } else {
     if(cntTarj) cntTarj.textContent='('+alTarj.length+')';
     lt.innerHTML=alTarj.map(a=>mkAlItem(a,'💳',
-      '<button class="btn btn-ghost btn-xs" onclick="verFicha(\'' +a.idCli+ '\')">Ver cliente</button>'
-      +'<button class="btn btn-primary btn-xs" onclick="abrirCli(\'' +a.id+ '\')">Editar cliente</button>'
+      '<button class="btn btn-ghost btn-xs" onclick="verFicha(''+a.idCli+'')">Ver cliente</button>'
+      +'<button class="btn btn-primary btn-xs" onclick="abrirCli(''+a.id+'')">Editar cliente</button>'
     )).join('');
   }
 
@@ -788,8 +845,8 @@ window.calcAlertas=()=>{
           +(r.premio?'Premio: <strong>$'+Number(r.premio).toLocaleString('es-AR')+'</strong>':'')
           +'</div>':'')
         +'<div class="al-btns">'
-        +'<button class="btn btn-ghost btn-xs" onclick="verFicha(\''+r.idCli+'\')">Ver cliente</button>'
-        +'<button class="btn btn-primary btn-xs" onclick="abrirPol(\''+r.id+'\')">Ver póliza</button>'
+        +'<button class="btn btn-ghost btn-xs" onclick="verFicha(''+r.idCli+'')">Ver cliente</button>'
+        +'<button class="btn btn-primary btn-xs" onclick="abrirPol(''+r.id+'')">Ver póliza</button>'
         +'</div></div>'
         +'<div class="al-right"><div class="al-fecha">'+r.fecha+'</div><div class="al-dias">'+dt+'</div>'
         +'<span class="badge '+colsR[r.nivel]+'" style="margin-top:6px">'+etqsR[r.nivel]+'</span></div></div>';
@@ -1374,6 +1431,96 @@ window.abrirTarjetasPanel=()=>{
   }
   setTimeout(()=>panel.scrollIntoView({behavior:'smooth', block:'start'}), 100);
 };
+
+// ── PERMISOS ──────────────────────────────────────────────────
+const ADMIN_EMAIL = null; // se setea al login
+let esAdmin = false;
+let PERMS = {};
+
+const PERM_IDS = ['p-dashboard','p-clientes','p-polizas','p-vencidas','p-config',
+  'p-ver-totales','p-add-cli','p-edit-cli','p-del-cli',
+  'p-add-pol','p-edit-pol','p-del-pol','p-renov-pol','p-arch-pol','p-import','p-export'];
+
+const PERM_DEFAULTS = {
+  'p-dashboard':true,'p-clientes':true,'p-polizas':true,'p-vencidas':true,'p-config':false,
+  'p-ver-totales':false,'p-add-cli':true,'p-edit-cli':true,'p-del-cli':false,
+  'p-add-pol':true,'p-edit-pol':true,'p-del-pol':false,'p-renov-pol':true,
+  'p-arch-pol':false,'p-import':false,'p-export':true
+};
+
+async function cargarPermisos() {
+  try {
+    const snap = await getDocs(collection(db,'permisos'));
+    PERMS = {...PERM_DEFAULTS};
+    snap.forEach(d=>{ if(d.id==='secretaria') PERMS={...PERM_DEFAULTS,...d.data()}; });
+  } catch(e) { PERMS = {...PERM_DEFAULTS}; }
+}
+
+function aplicarPermisos() {
+  if(esAdmin) return; // admin ve todo
+
+  // Pestañas
+  if(!PERMS['p-dashboard']) document.getElementById('ni-dash').style.display='none';
+  if(!PERMS['p-clientes'])  document.getElementById('ni-cli').style.display='none';
+  if(!PERMS['p-polizas'])   document.getElementById('ni-pol').style.display='none';
+  if(!PERMS['p-vencidas'])  document.getElementById('ni-venc').style.display='none';
+  document.getElementById('ni-cfg').style.display='none'; // secretaria nunca ve config
+
+  // Totales en dashboard
+  if(!PERMS['p-ver-totales']) {
+    const tp = document.getElementById('s-total-prima');
+    const tpr = document.getElementById('s-total-premio');
+    const tr = document.getElementById('s-ref-total');
+    if(tp) tp.closest('.stat-card').style.display='none';
+    if(tpr) tpr.closest('.stat-card').style.display='none';
+    if(tr) tr.closest('.stat-card').style.display='none';
+  }
+
+  // Botones clientes
+  if(!PERMS['p-add-cli'])  document.querySelectorAll('[onclick="abrirCli(null)"]').forEach(b=>b.style.display='none');
+  if(!PERMS['p-import'])   document.querySelectorAll('[onclick="abrir('mo-import')"]').forEach(b=>b.style.display='none');
+  if(!PERMS['p-export'])   document.querySelectorAll('[onclick="exportarCliExcel()"]').forEach(b=>b.style.display='none');
+
+  // Botones pólizas
+  if(!PERMS['p-add-pol'])  document.querySelectorAll('[onclick="abrirPol(null)"]').forEach(b=>b.style.display='none');
+  if(!PERMS['p-export'])   document.querySelectorAll('[onclick="exportarPolExcel()"]').forEach(b=>b.style.display='none');
+
+  // Archivar vencidas
+  if(!PERMS['p-arch-pol']) document.querySelectorAll('[onclick="archivarVencidas()"]').forEach(b=>b.style.display='none');
+
+  // Export alertas
+  if(!PERMS['p-export']) {
+    document.querySelectorAll('[onclick="exportarAlertasExcel()"]').forEach(b=>b.style.display='none');
+    document.querySelectorAll('[onclick="exportarAlertasPDF()"]').forEach(b=>b.style.display='none');
+    document.querySelectorAll('[onclick="exportarVencExcel()"]').forEach(b=>b.style.display='none');
+  }
+
+  // Guardar en renCli/renPol para ocultar botones en tabla también
+  window._perms = PERMS;
+}
+
+window.guardarPermisos = async () => {
+  const data = {};
+  PERM_IDS.forEach(id=>{ const el=document.getElementById(id); if(el) data[id]=el.checked; });
+  try {
+    const snap = await getDocs(collection(db,'permisos'));
+    let docId = null;
+    snap.forEach(d=>{ if(d.id==='secretaria') docId=d.id; });
+    if(docId) { await updateDoc(doc(db,'permisos','secretaria'),data); }
+    else { await addDoc(collection(db,'permisos'),{...data, _id:'secretaria'}); }
+    // Usar set con ID fijo
+    await setDoc(doc(db,'permisos','secretaria'), data);
+    toast('Permisos guardados','vd');
+  } catch(e) { toast('Error: '+e.message,'ro'); }
+};
+
+function cargarCheckboxPermisos() {
+  if(!esAdmin) return;
+  PERM_IDS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.checked = PERMS[id] ?? PERM_DEFAULTS[id] ?? false;
+  });
+}
 window.toast=toast;
 
 
