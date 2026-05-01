@@ -1527,7 +1527,7 @@ window.abrirCfgItem = (tipo) => {
   sg('cfgNombre', '');
   document.getElementById('mo-cfg-titulo').textContent = tipo==='tipo' ? 'Agregar tipo de póliza' : 'Agregar compañía';
   document.getElementById('cfgLabel').textContent = tipo==='tipo' ? 'Nombre del tipo' : 'Nombre de la compañía';
-  abr('mo-cfg');
+  abrir('mo-cfg');
 };
 
 window.editarCfgItem = (coleccion, id, nombre) => {
@@ -1537,7 +1537,7 @@ window.editarCfgItem = (coleccion, id, nombre) => {
   const esTipo = coleccion==='tipos_poliza';
   document.getElementById('mo-cfg-titulo').textContent = esTipo ? 'Editar tipo de póliza' : 'Editar compañía';
   document.getElementById('cfgLabel').textContent = esTipo ? 'Nombre del tipo' : 'Nombre de la compañía';
-  abr('mo-cfg');
+  abrir('mo-cfg');
 };
 
 window.guardarCfgItem = async () => {
