@@ -628,7 +628,7 @@ const db    = getFirestore(fbApp);
 
 // Estado
 let C=[], P=[], CF=[], PF=[], pC=1, pP=1;
-const PP=25;
+const PP=50;
 let isMobile=()=>window.innerWidth<768;
 
 // ── AUTH ─────────────────────────────────────────────────────
@@ -1397,7 +1397,20 @@ function sg(id,v){const e=document.getElementById(id);if(e)e.value=v||'';}
 function paginacion(pag,tp,pVar,fn){
   if(tp<=1)return '';
   let s='<div class="pg"><span></span><div class="pg-btns">';
-  for(let x=1;x<=tp;x++) s+=`<button class="pb${x===pag?' on':''}" onclick="${pVar}=${x};${fn}()">${x}</button>`;
+  // Show max 10 page buttons with ellipsis
+  const maxBtn=10, half=Math.floor(maxBtn/2);
+  let start=Math.max(1,pag-half);
+  let end=Math.min(tp,start+maxBtn-1);
+  if(end-start<maxBtn-1) start=Math.max(1,end-maxBtn+1);
+  if(start>1){
+    s+=`<button class="pb" onclick="${pVar}=1;${fn}()">1</button>`;
+    if(start>2) s+='<span style="padding:5px 4px;color:var(--txt3)">…</span>';
+  }
+  for(let x=start;x<=end;x++) s+=`<button class="pb${x===pag?' on':''}" onclick="${pVar}=${x};${fn}()">${x}</button>`;
+  if(end<tp){
+    if(end<tp-1) s+='<span style="padding:5px 4px;color:var(--txt3)">…</span>';
+    s+=`<button class="pb" onclick="${pVar}=${tp};${fn}()">${tp}</button>`;
+  }
   return s+'</div></div>';
 }
 window.abrir=id=>document.getElementById(id).classList.add('on');
