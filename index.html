@@ -293,6 +293,10 @@ td.nm{color:var(--txt);font-weight:600}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
       Pólizas vencidas <span class="ni-badge" id="badge-venc" style="display:none">0</span>
     </button>
+    <button class="ni" id="ni-fin" onclick="ir('fin')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+      Finalizadas
+    </button>
     <button class="ni" id="ni-cfg" onclick="ir('cfg')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
       Configuración
@@ -437,6 +441,20 @@ td.nm{color:var(--txt);font-weight:600}
           </div>
         </div>
         <div id="body-venc"><div class="ld"><div class="sp"></div>Cargando...</div></div>
+      </div>
+    </div>
+
+    <!-- FINALIZADAS -->
+    <div class="tab" id="tab-fin">
+      <div class="panel">
+        <div class="panel-hd">
+          <h3>Pólizas finalizadas <span id="sub-fin"></span></h3>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input class="si" id="q-fin" type="text" placeholder="Buscar cliente o póliza..." style="width:200px" oninput="renFin()">
+            <button class="btn btn-ghost btn-sm" onclick="exportarFinExcel()">⬇ Excel</button>
+          </div>
+        </div>
+        <div id="body-fin"><div class="ld"><div class="sp"></div>Cargando...</div></div>
       </div>
     </div>
 
@@ -662,7 +680,7 @@ async function cargarDatos(){
     document.getElementById('cnt-pol').textContent='('+P.length+')';
     document.getElementById('sub-cli').textContent='— '+C.length+' registros';
     document.getElementById('sub-pol').textContent='— '+P.length+' registros';
-    renCli(); sortYRenPol(); calcAlertas(); renVenc();
+    renCli(); sortYRenPol(); calcAlertas(); renVenc(); renFin();
   } catch(e){ toast('Error al cargar datos: '+e.message,'ro'); }
 }
 
@@ -674,7 +692,7 @@ window.calcAlertas=()=>{
   // Alertas de pólizas — excluir archivadas, anuladas, renovadas y anteriores al 1/1/2026
   const CORTE_AL = new Date('2026-01-01T00:00:00');
   P.forEach(p=>{
-    if(!p.fVto||p.estado==='Anulada'||p.estado==='Renovada') return;
+    if(!p.fVto||p.estado==='Anulada'||p.estado==='Renovada'||p.estado==='Finalizada') return;
     if(p.archivada) return;
     const v=pf(p.fVto); if(!v) return;
     if(v < CORTE_AL) return; // anteriores al 1/1/2026 van a pestaña vencidas
@@ -769,7 +787,10 @@ window.calcAlertas=()=>{
     if(!meses) return;
     const inicio=pf(p.fInicio), fin=pf(p.fVto);
     if(!inicio||!fin) return;
-    const cur=new Date(inicio);
+    // Start from ultimaRefact if available, otherwise from inicio
+    const ultimaRef = p.ultimaRefact ? pf(p.ultimaRefact) : null;
+    const startFrom = ultimaRef || inicio;
+    const cur=new Date(startFrom);
     cur.setMonth(cur.getMonth()+meses);
     while(cur<=fin){
       const ds=Math.round((cur-hoy)/864e5);
@@ -829,6 +850,7 @@ window.calcAlertas=()=>{
         +'<div class="al-btns">'
         +`<button class="btn btn-ghost btn-xs" onclick="verFicha('${r.idCli}')">Ver cliente</button>`
         +`<button class="btn btn-primary btn-xs" onclick="abrirPol('${r.id}')">Ver póliza</button>`
+        +`<button class="btn btn-success btn-xs" onclick="abrirRefacturar('${r.id}','${r.fecha}')">🔄 Refacturar</button>`
         +'</div></div>'
         +'<div class="al-right"><div class="al-fecha">'+r.fecha+'</div><div class="al-dias">'+dt+'</div>'
         +'<span class="badge '+colsR[r.nivel]+'" style="margin-top:6px">'+etqsR[r.nivel]+'</span></div></div>';
@@ -1258,7 +1280,7 @@ window.confirmarRenovar=async()=>{
     });
     toast('Póliza renovada correctamente','vd');
     cerrar('mo-renov');
-    cargarDatos();
+    await cargarDatos();
   }catch(e){toast('Error: '+e.message,'ro');}
 };
 
@@ -1419,6 +1441,106 @@ window.abrirTarjetasPanel=()=>{
   setTimeout(()=>panel.scrollIntoView({behavior:'smooth', block:'start'}), 100);
 };
 
+
+// ── FINALIZAR PÓLIZA ──────────────────────────────────────────
+window.finalizarPoliza = async(id) => {
+  if(!confirm('¿Marcar esta póliza como Finalizada?\n\nLa póliza saldrá de la lista de vencidas y pasará a "Pólizas finalizadas".')) return;
+  try {
+    await updateDoc(doc(db,'polizas',id),{estado:'Finalizada',actualizado:new Date().toLocaleDateString('es-AR')});
+    toast('Póliza finalizada','vd');
+    cargarDatos();
+  } catch(e) { toast('Error: '+e.message,'ro'); }
+};
+
+// ── PESTAÑA FINALIZADAS ───────────────────────────────────────
+window.renFin = () => {
+  const q = (document.getElementById('q-fin').value||'').toLowerCase().trim();
+  const fin = P.filter(p => {
+    if(p.estado !== 'Finalizada') return false;
+    if(q){
+      const nc = String(nCli(p.idCliente)||'').toLowerCase();
+      return (p.nroPoliza||'').toLowerCase().includes(q) || nc.includes(q) || (p.compania||'').toLowerCase().includes(q);
+    }
+    return true;
+  });
+  fin.sort((a,b) => { const va=pf(a.fVto)||new Date(0), vb=pf(b.fVto)||new Date(0); return vb-va; });
+
+  document.getElementById('sub-fin').textContent = '— '+fin.length+' pólizas';
+  const ct = document.getElementById('body-fin');
+  if(!fin.length){ ct.innerHTML='<div class="empty">Sin pólizas finalizadas.</div>'; return; }
+
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const PP_fin = 25;
+  const rows = fin.slice(0,PP_fin).map(p => `<tr>
+    <td class="nm">${p.nroPoliza||'-'}</td>
+    <td>${nCli(p.idCliente)}</td>
+    <td>${(p.tipo||p.observ)||'-'}</td>
+    <td>${p.compania||'-'}</td>
+    <td>${p.fVto||'-'}</td>
+    <td>${p.prima?'$'+Number(p.prima).toLocaleString('es-AR'):'-'}</td>
+    <td><div style="display:flex;gap:4px">
+      <button class="btn btn-ghost btn-xs" onclick="verFicha('${p.idCliente}')">Ver cliente</button>
+      <button class="btn btn-success btn-xs" onclick="renovarPoliza('${p.id}')">Renovar</button>
+    </div></td>
+  </tr>`).join('');
+
+  ct.innerHTML = `<div class="tw"><table>
+    <thead><tr><th>Nro.</th><th>Cliente</th><th>Tipo</th><th>Compañía</th><th>Venció</th><th>Prima</th><th>Acciones</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+  window._finalizadasData = fin;
+};
+
+window.exportarFinExcel = () => {
+  const fin = window._finalizadasData||[];
+  if(!fin.length){ toast('Sin datos para exportar','ro'); return; }
+  const data = fin.map(p=>({'Nro Póliza':p.nroPoliza,'Cliente':nCli(p.idCliente),'Tipo':p.tipo||p.observ,'Compañía':p.compania,'F.Vencimiento':p.fVto,'Prima':p.prima,'Premio':p.premio}));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2,ws,'Finalizadas');
+  XLSX.writeFile(wb2,'polizas_finalizadas_'+new Date().toLocaleDateString('es-AR').replace(/\//g,'-')+'.xlsx');
+  toast('Excel descargado','vd');
+};
+
+// ── REFACTURAR ────────────────────────────────────────────────
+window.abrirRefacturar = (id, fechaRefact) => {
+  const p = P.find(x=>x.id===id); if(!p) return;
+  const freqMeses = {Mensual:1,Trimestral:3,Cuatrimestral:4,Semestral:6,Anual:12};
+  const meses = freqMeses[p.frecuencia]||12;
+
+  // Calcular próxima fecha desde la fecha de refacturación actual
+  const fechaBase = pf(fechaRefact) || new Date();
+  const proxima = new Date(fechaBase);
+  proxima.setMonth(proxima.getMonth()+meses);
+
+  document.getElementById('refId').value = id;
+  document.getElementById('refFecha').value = fechaRefact;
+  document.getElementById('refProxFecha').value = proxima.toLocaleDateString('es-AR');
+  document.getElementById('refInfo').innerHTML =
+    '<strong>'+nCli(p.idCliente)+'</strong> — Póliza '+(p.nroPoliza||'-')+
+    '<br>Compañía: '+(p.compania||'-')+' &nbsp;|&nbsp; Frecuencia: '+(p.frecuencia||'-');
+  document.getElementById('refPrimaVal').textContent = p.prima?'$'+Number(p.prima).toLocaleString('es-AR'):'—';
+  document.getElementById('refPremioVal').textContent = p.premio?'$'+Number(p.premio).toLocaleString('es-AR'):'—';
+  document.getElementById('refSumaVal').textContent = p.sumaAse?'$'+Number(p.sumaAse).toLocaleString('es-AR'):'—';
+  document.getElementById('refFrecVal').textContent = p.frecuencia||'—';
+  abrir('mo-ref');
+};
+
+window.confirmarRefacturar = async() => {
+  const id = document.getElementById('refId').value;
+  const proxFecha = document.getElementById('refProxFecha').value;
+  const p = P.find(x=>x.id===id); if(!p) return;
+  try {
+    // Guardar la fecha de última refacturación para que el sistema sepa cuándo fue
+    await updateDoc(doc(db,'polizas',id),{
+      ultimaRefact: document.getElementById('refFecha').value,
+      actualizado: new Date().toLocaleDateString('es-AR')
+    });
+    toast('Refacturación registrada. Próxima: '+proxFecha,'vd');
+    cerrar('mo-ref');
+    calcAlertas(); // recalcular sin recargar todo
+  } catch(e) { toast('Error: '+e.message,'ro'); }
+};
 window.toast=toast;
 
 
@@ -1437,7 +1559,7 @@ window.renVenc = () => {
 
   // Incluir: archivadas + vencidas antes del 1/1/2026 + vencidas antes del filtro
   let vencidas = P.filter(p => {
-    if(p.estado==='Anulada') return false;
+    if(p.estado==='Anulada'||p.estado==='Finalizada') return false;
     const v = pf(p.fVto); if(!v) return false;
     const esVencida = v < hoy;
     if(!esVencida) return false;
@@ -1500,6 +1622,7 @@ window.renVenc = () => {
         <div class="m-card-btns">
           <button class="m-card-btn" onclick="verFicha('${p.idCliente}')">Ver cliente</button>
           <button class="m-card-btn" onclick="renovarPoliza('${p.id}')">Renovar</button>
+          <button class="m-card-btn" onclick="finalizarPoliza('${p.id}')" style="color:var(--gold2);border-color:var(--gold)">Finalizar</button>
           <button class="m-card-btn danger" onclick="bajarPoliza('${p.id}')">Anular</button>
         </div>
       </div>`;
@@ -1519,6 +1642,7 @@ window.renVenc = () => {
         <td><div style="display:flex;gap:4px">
           <button class="btn btn-ghost btn-xs" onclick="verFicha('${p.idCliente}')">Ver</button>
           <button class="btn btn-success btn-xs" onclick="renovarPoliza('${p.id}')">Renovar</button>
+          <button class="btn btn-gold btn-xs" onclick="finalizarPoliza('${p.id}')">Finalizar</button>
           <button class="btn btn-danger btn-xs" onclick="bajarPoliza('${p.id}')">Anular</button>
         </div></td>
       </tr>`;
@@ -1889,6 +2013,35 @@ document.querySelectorAll('.ov').forEach(m=>m.addEventListener('click',e=>{if(e.
     <div class="mo-ft">
       <button class="btn btn-ghost" onclick="cerrar('mo-cfg')">Cancelar</button>
       <button class="btn btn-primary" onclick="guardarCfgItem()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL REFACTURAR -->
+<div class="ov" id="mo-ref">
+  <div class="mo" style="max-width:480px">
+    <div class="mo-hd"><h3>Confirmar refacturación</h3><button class="mo-x" onclick="cerrar('mo-ref')">✕</button></div>
+    <div class="mo-bd">
+      <input type="hidden" id="refId">
+      <input type="hidden" id="refFecha">
+      <div style="background:var(--sky);border:1px solid var(--sky3);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--navy)" id="refInfo"></div>
+      <div class="fg">
+        <div class="ff"><label>Próxima fecha de refacturación</label><input id="refProxFecha" type="text" readonly style="background:var(--bg3);color:var(--txt3)"></div>
+        <div class="ff" style="background:var(--bg3);border-radius:var(--r);padding:12px;font-size:13px">
+          <div style="color:var(--txt3);margin-bottom:8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Datos actuales (solo lectura)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div><span style="color:var(--txt3);font-size:11px">Prima</span><br><strong id="refPrimaVal">—</strong></div>
+            <div><span style="color:var(--txt3);font-size:11px">Premio</span><br><strong id="refPremioVal">—</strong></div>
+            <div><span style="color:var(--txt3);font-size:11px">Suma asegurada</span><br><strong id="refSumaVal">—</strong></div>
+            <div><span style="color:var(--txt3);font-size:11px">Frecuencia</span><br><strong id="refFrecVal">—</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mo-ft">
+      <button class="btn btn-ghost" onclick="cerrar('mo-ref')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarRefacturar()">✅ Confirmar refacturación</button>
     </div>
   </div>
 </div>
