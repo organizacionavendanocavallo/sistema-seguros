@@ -74,6 +74,13 @@ body{font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--
 .perm-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer;color:var(--txt2)}
 .perm-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--accent)}
 .perm-row:hover{color:var(--accent)}
+.user-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:4px}
+.user-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--r2);padding:18px}
+.user-card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.user-card-name{font-weight:700;font-size:15px;color:var(--txt)}
+.perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.perm-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--txt2);cursor:pointer;padding:4px 0}
+.perm-item input{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
 .stat-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
 .stat-icon.ro{background:var(--danger-bg)}
 .stat-icon.na{background:var(--warn-bg)}
@@ -271,7 +278,7 @@ td.nm{color:var(--txt);font-weight:600}
       </div>
     </div>
     <div class="topbar-r">
-      <span class="topbar-user" id="tu"></span>
+      <span class="topbar-user" id="tu"></span><span id="role-badge" style="display:none;font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px;background:var(--bg3);color:var(--txt3)"></span>
       <button class="btn-out" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -460,7 +467,7 @@ td.nm{color:var(--txt);font-weight:600}
 
     <!-- CONFIGURACION -->
     <div class="tab" id="tab-cfg">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:1100px">
         <!-- Tipos de póliza -->
         <div class="panel">
           <div class="panel-hd">
@@ -477,40 +484,23 @@ td.nm{color:var(--txt);font-weight:600}
           </div>
           <div id="lista-companias" style="padding:8px 0"></div>
         </div>
-        <!-- Permisos secretaria -->
+        <!-- Usuarios -->
         <div class="panel" style="grid-column:1/-1">
           <div class="panel-hd">
-            <h3>🔐 Permisos de la secretaria</h3>
-            <button class="btn btn-primary btn-sm" onclick="guardarPermisos()">💾 Guardar permisos</button>
+            <h3>👥 Usuarios del sistema</h3>
           </div>
           <div style="padding:20px">
-            <p style="font-size:13px;color:var(--txt3);margin-bottom:16px">Configurá qué puede ver y hacer el usuario secretaria cuando ingresa al sistema.</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
-              <div>
-                <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt3);padding:8px 0;margin-bottom:8px;border-bottom:1px solid var(--border)">Pestañas visibles</div>
-                <label class="perm-row"><input type="checkbox" id="p-dashboard" checked> Dashboard</label>
-                <label class="perm-row"><input type="checkbox" id="p-clientes" checked> Clientes</label>
-                <label class="perm-row"><input type="checkbox" id="p-polizas" checked> Pólizas</label>
-                <label class="perm-row"><input type="checkbox" id="p-vencidas" checked> Pólizas vencidas</label>
-                <label class="perm-row"><input type="checkbox" id="p-config"> Configuración</label>
-                <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt3);padding:16px 0 8px;margin-top:8px;border-bottom:1px solid var(--border)">Dashboard</div>
-                <label class="perm-row"><input type="checkbox" id="p-ver-totales"> Ver prima, premio y total pólizas</label>
-              </div>
-              <div>
-                <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt3);padding:8px 0;margin-bottom:8px;border-bottom:1px solid var(--border)">Acciones en clientes</div>
-                <label class="perm-row"><input type="checkbox" id="p-add-cli" checked> Agregar clientes</label>
-                <label class="perm-row"><input type="checkbox" id="p-edit-cli" checked> Editar clientes</label>
-                <label class="perm-row"><input type="checkbox" id="p-del-cli"> Eliminar clientes</label>
-                <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--txt3);padding:16px 0 8px;margin-top:8px;border-bottom:1px solid var(--border)">Acciones en pólizas</div>
-                <label class="perm-row"><input type="checkbox" id="p-add-pol" checked> Agregar pólizas</label>
-                <label class="perm-row"><input type="checkbox" id="p-edit-pol" checked> Editar pólizas</label>
-                <label class="perm-row"><input type="checkbox" id="p-del-pol"> Eliminar / Anular pólizas</label>
-                <label class="perm-row"><input type="checkbox" id="p-renov-pol" checked> Renovar pólizas</label>
-                <label class="perm-row"><input type="checkbox" id="p-arch-pol"> Archivar vencidas</label>
-                <label class="perm-row"><input type="checkbox" id="p-import"> Importar Excel</label>
-                <label class="perm-row"><input type="checkbox" id="p-export" checked> Exportar Excel / PDF</label>
+            <!-- Agregar usuario -->
+            <div style="background:var(--sky);border:1px solid var(--sky3);border-radius:var(--r);padding:16px;margin-bottom:20px">
+              <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--navy);margin-bottom:12px">Agregar nuevo usuario</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+                <div><label style="font-size:11px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">NOMBRE</label><input id="nu-nombre" class="si" type="text" placeholder="Ej: María Secretaria" style="width:200px"></div>
+                <div><label style="font-size:11px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">EMAIL</label><input id="nu-email" class="si" type="email" placeholder="mail@ejemplo.com" style="width:240px"></div>
+                <button class="btn btn-primary btn-sm" onclick="usr_agregar()">+ Agregar</button>
               </div>
             </div>
+            <!-- Lista usuarios -->
+            <div id="usuarios-lista" class="user-grid"></div>
           </div>
         </div>
       </div>
@@ -633,17 +623,32 @@ const PP=50;
 let isMobile=()=>window.innerWidth<768;
 
 // ── AUTH ─────────────────────────────────────────────────────
-const ADMIN_EMAIL = 'organizacionavendanocavallo@gmail.com';
-
-onAuthStateChanged(auth, u=>{
+onAuthStateChanged(auth, async u=>{
   if(u){
+    try {
+      const uRec = await buscarUsuarioActual(u.email);
+      if(!uRec && USUARIOS.length > 0){
+        // Email no autorizado
+        document.getElementById('login-screen').style.display='flex';
+        document.getElementById('app').style.display='none';
+        const err = document.getElementById('login-err');
+        err.textContent = 'No tenés acceso. Contactá al administrador.';
+        err.style.display='block';
+        await signOut(auth);
+        return;
+      }
+      currentUser = uRec;
+    } catch(e){ console.warn('Error auth:', e); currentUser = null; }
+
     document.getElementById('login-screen').style.display='none';
     const app=document.getElementById('app');
     app.style.display='flex'; app.style.flexDirection='column';
-    document.getElementById('tu').textContent=u.email;
-    window._esAdmin = (u.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+    document.getElementById('tu').textContent = currentUser ? (currentUser.nombre||u.email) : u.email;
+    window._esAdmin = currentUser && currentUser.rol==='admin';
+    aplicarPermisos();
     cargarDatos().then(()=>{
-      try { aplicarPermisos(); } catch(e){ console.warn('Permisos error:', e); }
+      aplicarPermisos();
+      if(window._esAdmin) usr_render();
     });
   } else {
     document.getElementById('login-screen').style.display='flex';
@@ -679,6 +684,7 @@ async function cargarDatos(){
       getDocs(collection(db,'polizas'))
     ]);
     await cargarCfg();
+    if(window._esAdmin) { await cargarUsuarios(); usr_render(); }
     C=[]; sc.forEach(d=>C.push({id:d.id,...d.data()}));
     P=[]; sp.forEach(d=>P.push({id:d.id,...d.data()}));
     CF=C.slice(); PF=P.slice();
@@ -1582,15 +1588,136 @@ window.confirmarRefacturar = async() => {
   } catch(e) { toast('Error: '+e.message,'ro'); }
 };
 
-// ── PERMISOS SECRETARIA ───────────────────────────────────────
-function aplicarPermisos() {
-  if(window._esAdmin) {
-    // Admin: mostrar todo lo que estaba oculto por defecto
-    const show = ['ni-cfg','card-prima','card-premio','card-total'];
-    show.forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=''; });
-  }
-  // Secretaria: los elementos ya están ocultos por defecto en el HTML
+// ── USUARIOS Y PERMISOS ───────────────────────────────────────
+let currentUser = null;
+let USUARIOS = [];
+
+const TABS_CONFIG = [
+  {id:'dash',  label:'Dashboard'},
+  {id:'cli',   label:'Clientes'},
+  {id:'pol',   label:'Pólizas'},
+  {id:'venc',  label:'Pólizas vencidas'},
+  {id:'fin',   label:'Pólizas finalizadas'},
+  {id:'ver-totales', label:'Ver prima y premio (dashboard)'},
+];
+
+async function cargarUsuarios() {
+  try {
+    const snap = await getDocs(collection(db,'usuarios'));
+    USUARIOS = [];
+    snap.forEach(d=>USUARIOS.push({docId:d.id,...d.data()}));
+  } catch(e) { console.warn('Error cargando usuarios:', e); }
 }
+
+async function buscarUsuarioActual(email) {
+  if(!USUARIOS.length) await cargarUsuarios();
+  // Si no hay usuarios, el primero que entra es admin
+  if(USUARIOS.length === 0) {
+    const nuevoAdmin = {
+      nombre: email.split('@')[0],
+      email: email.toLowerCase(),
+      rol: 'admin',
+      pestanas: ['dash','cli','pol','venc','fin','ver-totales']
+    };
+    const ref = await addDoc(collection(db,'usuarios'), nuevoAdmin);
+    USUARIOS = [{docId:ref.id,...nuevoAdmin}];
+    return {docId:ref.id,...nuevoAdmin};
+  }
+  return USUARIOS.find(u=>u.email&&u.email.toLowerCase()===email.toLowerCase()) || null;
+}
+
+function aplicarPermisos() {
+  if(!currentUser) return;
+  if(currentUser.rol === 'admin') {
+    // Admin ve todo
+    ['ni-cfg','card-prima','card-premio','card-total'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.style.display='';
+    });
+    return;
+  }
+  // Usuario no admin: mostrar solo las pestañas permitidas
+  const pestanas = currentUser.pestanas || [];
+  const tabMap = {dash:'ni-dash',cli:'ni-cli',pol:'ni-pol',venc:'ni-venc',fin:'ni-fin'};
+  Object.entries(tabMap).forEach(([tab,niId])=>{
+    const el=document.getElementById(niId);
+    if(el) el.style.display = pestanas.includes(tab) ? '' : 'none';
+  });
+  // Totales
+  if(!pestanas.includes('ver-totales')) {
+    ['card-prima','card-premio','card-total'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.style.display='none';
+    });
+  }
+  // Badge rol
+  const badge = document.getElementById('role-badge');
+  if(badge){ badge.textContent = currentUser.nombre||'Usuario'; badge.style.display='inline'; }
+}
+
+// ── RENDER USUARIOS (solo admin) ─────────────────────────────
+function usr_render() {
+  const el = document.getElementById('usuarios-lista'); if(!el) return;
+  if(!USUARIOS.length){ el.innerHTML='<p style="color:var(--txt3);font-size:13px">Sin usuarios.</p>'; return; }
+  el.innerHTML = USUARIOS.map(u=>{
+    const esAdmin = u.rol==='admin';
+    const pestanas = u.pestanas||[];
+    return `<div class="user-card">
+      <div class="user-card-h">
+        <div>
+          <span class="user-card-name">${u.nombre||'—'}</span>
+          <span class="badge ${esAdmin?'badge-az':'badge-gr'}" style="margin-left:8px">${esAdmin?'Admin':'Usuario'}</span>
+        </div>
+        ${!esAdmin?`<button class="btn btn-danger btn-xs" onclick="usr_del('${u.docId}')">Eliminar</button>`:''}
+      </div>
+      <div style="font-size:12px;color:var(--txt3);margin-bottom:12px">📧 ${u.email||'—'}</div>
+      ${!esAdmin?`
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);margin-bottom:8px">Pestañas habilitadas:</div>
+        <div class="perm-grid">
+          ${TABS_CONFIG.map(t=>`<label class="perm-item">
+            <input type="checkbox" ${pestanas.includes(t.id)?'checked':''} onchange="usr_updatePerm('${u.docId}','${t.id}',this.checked)">
+            ${t.label}
+          </label>`).join('')}
+        </div>
+      `:''}
+    </div>`;
+  }).join('');
+}
+
+window.usr_agregar = async() => {
+  const nombre = document.getElementById('nu-nombre').value.trim();
+  const email = document.getElementById('nu-email').value.trim().toLowerCase();
+  if(!nombre||!email){ toast('Completá nombre y email','ro'); return; }
+  if(USUARIOS.find(u=>u.email===email)){ toast('Ese email ya existe','ro'); return; }
+  const nuevo = { nombre, email, rol:'usuario', pestanas:['dash','cli','pol','venc','fin'] };
+  try {
+    const ref = await addDoc(collection(db,'usuarios'), nuevo);
+    USUARIOS.push({docId:ref.id,...nuevo});
+    document.getElementById('nu-nombre').value='';
+    document.getElementById('nu-email').value='';
+    toast('Usuario agregado','vd');
+    usr_render();
+  } catch(e){ toast('Error: '+e.message,'ro'); }
+};
+
+window.usr_updatePerm = async(docId, tab, checked) => {
+  const u = USUARIOS.find(x=>x.docId===docId); if(!u) return;
+  if(!u.pestanas) u.pestanas=[];
+  if(checked && !u.pestanas.includes(tab)) u.pestanas.push(tab);
+  else if(!checked) u.pestanas = u.pestanas.filter(t=>t!==tab);
+  try {
+    await updateDoc(doc(db,'usuarios',docId),{pestanas:u.pestanas});
+    toast('Permiso actualizado','vd');
+  } catch(e){ toast('Error: '+e.message,'ro'); }
+};
+
+window.usr_del = async(docId) => {
+  if(!confirm('¿Eliminar este usuario?')) return;
+  try {
+    await deleteDoc(doc(db,'usuarios',docId));
+    USUARIOS = USUARIOS.filter(u=>u.docId!==docId);
+    toast('Usuario eliminado','vd');
+    usr_render();
+  } catch(e){ toast('Error: '+e.message,'ro'); }
+};
 window.toast=toast;
 
 
