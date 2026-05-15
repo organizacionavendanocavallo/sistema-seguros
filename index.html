@@ -297,7 +297,7 @@ td.nm{color:var(--txt);font-weight:600}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
       Finalizadas
     </button>
-    <button class="ni" id="ni-cfg" onclick="ir('cfg')">
+    <button class="ni" id="ni-cfg" onclick="ir('cfg')" style="display:none">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
       Configuración
     </button>
@@ -318,18 +318,18 @@ td.nm{color:var(--txt);font-weight:600}
         <div class="stat-card"><div class="stat-icon ro">🔴</div><div><div class="stat-n ro" id="s-ref-venc">0</div><div class="stat-l">Refact. vencidas</div></div></div>
         <div class="stat-card"><div class="stat-icon na">🟡</div><div><div class="stat-n na" id="s-ref-hoy">0</div><div class="stat-l">Refact. hoy</div></div></div>
         <div class="stat-card"><div class="stat-icon az">🔵</div><div><div class="stat-n az" id="s-ref-prox">0</div><div class="stat-l">Refact. en 10 días</div></div></div>
-        <div class="stat-card"><div class="stat-icon vd">✅</div><div><div class="stat-n vd" id="s-ref-total">0</div><div class="stat-l">Total pólizas activas</div></div></div>
+        <div class="stat-card" id="card-total" style="display:none"><div class="stat-icon vd">✅</div><div><div class="stat-n vd" id="s-ref-total">0</div><div class="stat-l">Total pólizas activas</div></div></div>
       </div>
       <div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);margin-bottom:10px">Totales cartera vigente</div>
       <div class="stats-grid" style="margin-bottom:20px;grid-template-columns:1fr 1fr">
-        <div class="stat-card" style="border-left:4px solid var(--accent)">
+        <div class="stat-card" id="card-prima" style="border-left:4px solid var(--accent);display:none">
           <div class="stat-icon az">💰</div>
           <div>
             <div class="stat-n az" id="s-total-prima" style="font-size:20px">$0</div>
             <div class="stat-l">Prima total (pólizas vigentes)</div>
           </div>
         </div>
-        <div class="stat-card" style="border-left:4px solid var(--gold)">
+        <div class="stat-card" id="card-premio" style="border-left:4px solid var(--gold);display:none">
           <div class="stat-icon" style="background:#fef9c3">🏆</div>
           <div>
             <div class="stat-n" id="s-total-premio" style="font-size:20px;color:var(--gold)">$0</div>
@@ -726,6 +726,13 @@ window.calcAlertas=()=>{
   al.sort((a,b)=>ord[a.nivel]!==ord[b.nivel]?ord[a.nivel]-ord[b.nivel]:a.dias-b.dias);
 
   // Stats
+  // Contar vigentes reales (estado Vigente y fecha futura)
+  const vigentes_cnt = P.filter(p=>{
+    if(p.estado!=='Vigente'||p.archivada) return false;
+    const v=pf(p.fVto); return v && v>=hoy;
+  }).length;
+  document.getElementById('s-vigentes').textContent = vigentes_cnt;
+
   const sv=al.filter(a=>a.nivel==='vencida').length;
   const su=al.filter(a=>a.nivel==='urgente').length;
   const sp=al.filter(a=>a.nivel==='proxima').length;
@@ -1549,23 +1556,12 @@ window.confirmarRefacturar = async() => {
 
 // ── PERMISOS SECRETARIA ───────────────────────────────────────
 function aplicarPermisos() {
-  if(window._esAdmin) return; // admin ve todo, no hacer nada
-
-  // Ocultar pestaña Configuración
-  const niCfg = document.getElementById('ni-cfg');
-  if(niCfg) niCfg.style.display='none';
-
-  // Ocultar totales (prima, premio, total pólizas activas)
-  ['s-total-prima','s-total-premio','s-ref-total'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el && el.closest('.stat-card')) el.closest('.stat-card').style.display='none';
-  });
-
-  // Ocultar contador pólizas en nav
-  const cntPol = document.getElementById('cnt-pol');
-  if(cntPol) cntPol.style.display='none';
-  const cntCli = document.getElementById('cnt-cli');
-  if(cntCli) cntCli.style.display='none';
+  if(window._esAdmin) {
+    // Admin: mostrar todo lo que estaba oculto por defecto
+    const show = ['ni-cfg','card-prima','card-premio','card-total'];
+    show.forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=''; });
+  }
+  // Secretaria: los elementos ya están ocultos por defecto en el HTML
 }
 window.toast=toast;
 
