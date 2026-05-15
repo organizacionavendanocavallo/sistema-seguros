@@ -1585,7 +1585,7 @@ window.confirmarRefacturar = async() => {
     });
     toast('Refacturación registrada. Próxima: '+proxFecha,'vd');
     cerrar('mo-ref');
-    calcAlertas(); // recalcular sin recargar todo
+    await cargarDatos();
   } catch(e) { toast('Error: '+e.message,'ro'); }
 };
 
