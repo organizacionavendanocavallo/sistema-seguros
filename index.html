@@ -632,13 +632,18 @@ const PP=25;
 let isMobile=()=>window.innerWidth<768;
 
 // ── AUTH ─────────────────────────────────────────────────────
+const ADMIN_EMAIL = 'organizacionavendanocavallo@gmail.com';
+
 onAuthStateChanged(auth, u=>{
   if(u){
     document.getElementById('login-screen').style.display='none';
     const app=document.getElementById('app');
     app.style.display='flex'; app.style.flexDirection='column';
     document.getElementById('tu').textContent=u.email;
-    cargarDatos();
+    window._esAdmin = (u.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+    cargarDatos().then(()=>{
+      try { aplicarPermisos(); } catch(e){ console.warn('Permisos error:', e); }
+    });
   } else {
     document.getElementById('login-screen').style.display='flex';
     document.getElementById('app').style.display='none';
@@ -1541,6 +1546,27 @@ window.confirmarRefacturar = async() => {
     calcAlertas(); // recalcular sin recargar todo
   } catch(e) { toast('Error: '+e.message,'ro'); }
 };
+
+// ── PERMISOS SECRETARIA ───────────────────────────────────────
+function aplicarPermisos() {
+  if(window._esAdmin) return; // admin ve todo, no hacer nada
+
+  // Ocultar pestaña Configuración
+  const niCfg = document.getElementById('ni-cfg');
+  if(niCfg) niCfg.style.display='none';
+
+  // Ocultar totales (prima, premio, total pólizas activas)
+  ['s-total-prima','s-total-premio','s-ref-total'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && el.closest('.stat-card')) el.closest('.stat-card').style.display='none';
+  });
+
+  // Ocultar contador pólizas en nav
+  const cntPol = document.getElementById('cnt-pol');
+  if(cntPol) cntPol.style.display='none';
+  const cntCli = document.getElementById('cnt-cli');
+  if(cntCli) cntCli.style.display='none';
+}
 window.toast=toast;
 
 
