@@ -628,6 +628,7 @@ const db    = getFirestore(fbApp);
 
 // Estado
 let C=[], P=[], CF=[], PF=[], pC=1, pP=1;
+window._pg={}; // page state exposed to window
 const PP=50;
 let isMobile=()=>window.innerWidth<768;
 
@@ -1397,22 +1398,33 @@ function sg(id,v){const e=document.getElementById(id);if(e)e.value=v||'';}
 function paginacion(pag,tp,pVar,fn){
   if(tp<=1)return '';
   let s='<div class="pg"><span></span><div class="pg-btns">';
-  // Show max 10 page buttons with ellipsis
   const maxBtn=10, half=Math.floor(maxBtn/2);
   let start=Math.max(1,pag-half);
   let end=Math.min(tp,start+maxBtn-1);
   if(end-start<maxBtn-1) start=Math.max(1,end-maxBtn+1);
+  const btn=(x)=>`<button class="pb${x===pag?' on':''}" onclick="irPag('${pVar}',${x},'${fn}')">${x}</button>`;
   if(start>1){
-    s+=`<button class="pb" onclick="${pVar}=1;${fn}()">1</button>`;
+    s+=btn(1);
     if(start>2) s+='<span style="padding:5px 4px;color:var(--txt3)">…</span>';
   }
-  for(let x=start;x<=end;x++) s+=`<button class="pb${x===pag?' on':''}" onclick="${pVar}=${x};${fn}()">${x}</button>`;
+  for(let x=start;x<=end;x++) s+=btn(x);
   if(end<tp){
     if(end<tp-1) s+='<span style="padding:5px 4px;color:var(--txt3)">…</span>';
-    s+=`<button class="pb" onclick="${pVar}=${tp};${fn}()">${tp}</button>`;
+    s+=btn(tp);
   }
   return s+'</div></div>';
 }
+
+window.irPag=(pVar,n,fn)=>{
+  if(pVar==='pC') pC=n;
+  else if(pVar==='pP') pP=n;
+  else if(pVar==='pC_venc') pC_venc=n;
+  else if(pVar==='pC_fin') pC_fin=n;
+  if(fn==='renCli') renCli();
+  else if(fn==='renPol') renPol();
+  else if(fn==='renVenc') renVenc();
+  else if(fn==='renFin') renFin();
+};
 window.abrir=id=>document.getElementById(id).classList.add('on');
 window.cerrar=id=>document.getElementById(id).classList.remove('on');
 let _tt;
@@ -1496,7 +1508,8 @@ window.renFin = () => {
 
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const PP_fin = 25;
-  const rows = fin.slice(0,PP_fin).map(p => `<tr>
+  const ini_fin=(pC_fin-1)*PP_fin;
+  const rows = fin.slice(ini_fin,ini_fin+PP_fin).map(p => `<tr>
     <td class="nm">${p.nroPoliza||'-'}</td>
     <td>${nCli(p.idCliente)}</td>
     <td>${(p.tipo||p.observ)||'-'}</td>
@@ -1509,10 +1522,12 @@ window.renFin = () => {
     </div></td>
   </tr>`).join('');
 
+  const tp_fin=Math.ceil(fin.length/PP_fin);
   ct.innerHTML = `<div class="tw"><table>
     <thead><tr><th>Nro.</th><th>Cliente</th><th>Tipo</th><th>Compañía</th><th>Venció</th><th>Prima</th><th>Acciones</th></tr></thead>
     <tbody>${rows}</tbody>
-  </table></div>`;
+  </table></div>`+paginacion(pC_fin,tp_fin,'pC_fin','renFin')
+  +`<div style="padding:8px 20px 12px;font-size:12px;color:var(--txt3)">Mostrando ${ini_fin+1}–${Math.min(ini_fin+PP_fin,fin.length)} de ${fin.length}</div>`;
   window._finalizadasData = fin;
 };
 
@@ -1581,6 +1596,7 @@ window.toast=toast;
 
 // ── PÓLIZAS VENCIDAS ──────────────────────────────────────────
 let pC_venc = 1;
+let pC_fin = 1;
 const PP_venc = 25;
 
 let sortVencCol='fVto', sortVencDir=-1; // por defecto: vencimiento desc
