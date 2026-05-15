@@ -731,7 +731,7 @@ window.calcAlertas=()=>{
     if(p.estado!=='Vigente'||p.archivada) return false;
     const v=pf(p.fVto); return v && v>=hoy;
   }).length;
-  document.getElementById('s-vigentes').textContent = vigentes_cnt;
+  const elVig=document.getElementById('s-vigentes'); if(elVig) elVig.textContent=vigentes_cnt;
 
   const sv=al.filter(a=>a.nivel==='vencida').length;
   const su=al.filter(a=>a.nivel==='urgente').length;
