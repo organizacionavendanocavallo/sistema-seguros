@@ -1300,6 +1300,8 @@ window.confirmarRenovar=async()=>{
     });
     toast('Póliza renovada correctamente','vd');
     cerrar('mo-renov');
+    // Esperar un momento para que Firestore propague el cambio
+    await new Promise(r=>setTimeout(r,800));
     await cargarDatos();
   }catch(e){toast('Error: '+e.message,'ro');}
 };
